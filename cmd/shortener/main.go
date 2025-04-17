@@ -127,7 +127,7 @@ func handleNormal(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/")
 
 	if id == "" {
-		http.Error(w, "Not found", http.StatusNotFound)
+		http.Error(w, "Not found", http.StatusBadRequest)
 
 		return
 	}
@@ -137,11 +137,12 @@ func handleNormal(w http.ResponseWriter, r *http.Request) {
 	mu.RUnlock()
 
 	if !ok {
-		http.Error(w, "Not found", http.StatusNotFound)
+		http.Error(w, "Not found", http.StatusBadRequest)
 
 		return
 	}
 
+	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Location", originalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 
