@@ -34,35 +34,34 @@ func generateShortID() (string, error) {
 }
 
 // getBaseURL определяет базовый URL
-func getBaseURL(r *http.Request) string {
+func getBaseURL(req *http.Request) string {
 	scheme := "http"
 
-	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+	if req.TLS != nil || req.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"
 	}
 
-	return fmt.Sprintf("%s://%s/", scheme, r.Host)
+	return fmt.Sprintf("%s://%s/", scheme, req.Host)
 }
 
 // handleShorten обрабатывает POST-запрос для сокращения URL
-func handleShorten(w http.ResponseWriter, r *http.Request) {
+func handleShorten(res http.ResponseWriter, req *http.Request) {
 	// Проверяем метод
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if req.Method != http.MethodPost {
+		http.Error(res, "Method not allowed", http.StatusMethodNotAllowed)
 
 		return
 	}
 
 	// Проверяем Content-Type
-	if contentType := r.Header.Get("Content-Type"); contentType != "text/plain" {
-		http.Error(w, "Content-Type must be text/plain", http.StatusUnsupportedMediaType)
-
+	if contentType := req.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/plain") {
+		http.Error(res, "Content-Type must be text/plain", http.StatusUnsupportedMediaType)
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil || len(body) == 0 {
-		http.Error(w, "Bad request: empty body or read error", http.StatusBadRequest)
+		http.Error(res, "Bad request: empty body or read error", http.StatusBadRequest)
 
 		return
 	}
@@ -71,7 +70,7 @@ func handleShorten(w http.ResponseWriter, r *http.Request) {
 
 	// Проверяем, что URL валиден
 	if _, err := url.ParseRequestURI(originalURL); err != nil {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		http.Error(res, "Invalid URL", http.StatusBadRequest)
 
 		return
 	}
@@ -80,12 +79,12 @@ func handleShorten(w http.ResponseWriter, r *http.Request) {
 	mu.RLock()
 	for id, link := range urlStore {
 		if link == originalURL {
-			shortURL := getBaseURL(r) + id
+			shortURL := getBaseURL(req) + id
 
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusCreated)
+			res.Header().Set("Content-Type", "text/plain")
+			res.WriteHeader(http.StatusCreated)
 
-			_, _ = w.Write([]byte(shortURL))
+			_, _ = res.Write([]byte(shortURL))
 
 			mu.RUnlock()
 
@@ -98,7 +97,7 @@ func handleShorten(w http.ResponseWriter, r *http.Request) {
 	shortID, err := generateShortID()
 
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(res, "Internal server error", http.StatusInternalServerError)
 		log.Printf("Failed to generate short ID: %v", err)
 
 		return
@@ -109,25 +108,25 @@ func handleShorten(w http.ResponseWriter, r *http.Request) {
 	urlStore[shortID] = originalURL
 	mu.Unlock()
 
-	shortURL := getBaseURL(r) + shortID
+	shortURL := getBaseURL(req) + shortID
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write([]byte(shortURL))
+	res.Header().Set("Content-Type", "text/plain")
+	res.WriteHeader(http.StatusCreated)
+	_, _ = res.Write([]byte(shortURL))
 }
 
 // handleNormal обрабатывает GET-запрос по короткому URL
-func handleNormal(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+func handleNormal(res http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		http.Error(res, "Method not allowed", http.StatusMethodNotAllowed)
 
 		return
 	}
 
-	id := strings.TrimPrefix(r.URL.Path, "/")
+	id := strings.TrimPrefix(req.URL.Path, "/")
 
 	if id == "" {
-		http.Error(w, "Not found", http.StatusBadRequest)
+		http.Error(res, "Not found", http.StatusBadRequest)
 
 		return
 	}
@@ -137,25 +136,25 @@ func handleNormal(w http.ResponseWriter, r *http.Request) {
 	mu.RUnlock()
 
 	if !ok {
-		http.Error(w, "Not found", http.StatusBadRequest)
+		http.Error(res, "Not found", http.StatusBadRequest)
 
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.Header().Set("Location", originalURL)
-	w.WriteHeader(http.StatusTemporaryRedirect)
+	res.Header().Set("Content-Type", "text/plain")
+	res.Header().Set("Location", originalURL)
+	res.WriteHeader(http.StatusTemporaryRedirect)
 
 }
 
-func rootHandler(w http.ResponseWriter, r *http.Request) {
+func rootHandler(res http.ResponseWriter, req *http.Request) {
 	switch {
-	case r.URL.Path == "/" && r.Method == http.MethodPost:
-		handleShorten(w, r)
-	case r.URL.Path != "/" && r.Method == http.MethodGet:
-		handleNormal(w, r)
+	case req.URL.Path == "/" && req.Method == http.MethodPost:
+		handleShorten(res, req)
+	case req.URL.Path != "/" && req.Method == http.MethodGet:
+		handleNormal(res, req)
 	default:
-		http.Error(w, "Not found", http.StatusNotFound)
+		http.Error(res, "Not found", http.StatusNotFound)
 	}
 }
 
