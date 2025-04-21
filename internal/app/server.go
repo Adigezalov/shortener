@@ -14,18 +14,18 @@ type Server struct {
 }
 
 func NewServer() *Server {
-	storage := storage.NewMemoryStorage()
-	service := service.NewURLService(storage)
+	_storage := storage.NewMemoryStorage()
+	_service := service.NewURLService(_storage)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", NewHandlers(service).RootHandler)
+	mux.HandleFunc("/", NewHandlers(_service).RootHandler)
 
 	return &Server{
 		httpServer: &http.Server{
 			Addr:    Address,
 			Handler: mux,
 		},
-		service: service,
+		service: _service,
 	}
 }
 

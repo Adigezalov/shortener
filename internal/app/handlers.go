@@ -22,6 +22,8 @@ func (h *Handlers) RootHandler(w http.ResponseWriter, r *http.Request) {
 		h.handleShorten(w, r)
 	case r.URL.Path != "/" && r.Method == http.MethodGet:
 		h.handleNormal(w, r)
+	case r.Method != http.MethodPost && r.Method != http.MethodGet:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	default:
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
