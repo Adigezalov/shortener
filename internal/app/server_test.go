@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/Adigezalov/shortener/internal/service"
 	"github.com/Adigezalov/shortener/internal/storage"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,9 +18,9 @@ func TestServer(t *testing.T) {
 	_service := service.NewURLService(_storage)
 	handler := NewHandlers(_service)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler.RootHandler)
-	testServer := httptest.NewServer(mux)
+	router := chi.NewRouter()
+	router.Mount("/", handler.Routes())
+	testServer := httptest.NewServer(router)
 	defer testServer.Close()
 
 	t.Run("server initialization", func(t *testing.T) {
@@ -45,7 +46,11 @@ func TestServer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				t.Errorf("failed to close response body: %v", err)
+			}
+		}()
 
 		if resp.StatusCode != http.StatusCreated {
 			t.Errorf("expected status 201, got %d", resp.StatusCode)
@@ -75,7 +80,11 @@ func TestServer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				t.Errorf("failed to close response body: %v", err)
+			}
+		}()
 
 		if resp.StatusCode != http.StatusTemporaryRedirect {
 			t.Errorf("expected status 307, got %d", resp.StatusCode)
@@ -108,7 +117,7 @@ func TestServer(t *testing.T) {
 				name:           "GET to root",
 				method:         http.MethodGet,
 				path:           "/",
-				expectedStatus: http.StatusNotFound,
+				expectedStatus: http.StatusMethodNotAllowed,
 			},
 			{
 				name:           "PUT method not allowed",
@@ -146,7 +155,11 @@ func TestServer(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer resp.Body.Close()
+				defer func() {
+					if err := resp.Body.Close(); err != nil {
+						t.Errorf("failed to close response body: %v", err)
+					}
+				}()
 
 				if resp.StatusCode != tt.expectedStatus {
 					t.Errorf("expected status %d, got %d", tt.expectedStatus, resp.StatusCode)

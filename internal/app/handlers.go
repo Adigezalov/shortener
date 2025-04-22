@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/Adigezalov/shortener/internal/service"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"log"
 	"net/http"
@@ -16,17 +17,12 @@ func NewHandlers(service *service.URLService) *Handlers {
 	return &Handlers{service: service}
 }
 
-func (h *Handlers) RootHandler(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case r.URL.Path == "/" && r.Method == http.MethodPost:
-		h.handleShorten(w, r)
-	case r.URL.Path != "/" && r.Method == http.MethodGet:
-		h.handleNormal(w, r)
-	case r.Method != http.MethodPost && r.Method != http.MethodGet:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	default:
-		http.Error(w, "Not found", http.StatusNotFound)
-	}
+func (h *Handlers) Routes() chi.Router {
+	r := chi.NewRouter()
+	r.Post("/", h.handleShorten)
+	r.Get("/{id}", h.handleNormal)
+
+	return r
 }
 
 func (h *Handlers) handleShorten(w http.ResponseWriter, r *http.Request) {
