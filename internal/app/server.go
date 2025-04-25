@@ -1,24 +1,24 @@
 package app
 
 import (
+	"github.com/Adigezalov/shortener/internal/config"
 	"github.com/Adigezalov/shortener/internal/service"
 	"github.com/Adigezalov/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"net/http"
 )
 
-const Address = ":8080"
-
 type Server struct {
 	httpServer *http.Server
 	service    *service.URLService
 	router     *chi.Mux
+	config     config.Config
 }
 
-func NewServer() *Server {
+func NewServer(cfg config.Config) *Server {
 	// Инициализация зависимостей
 	_storage := storage.NewMemoryStorage()
-	_service := service.NewURLService(_storage)
+	_service := service.NewURLService(_storage, cfg.BaseURL)
 
 	// Создаем chi роутер
 	router := chi.NewRouter()
@@ -31,11 +31,12 @@ func NewServer() *Server {
 
 	return &Server{
 		httpServer: &http.Server{
-			Addr:    Address,
+			Addr:    cfg.ServerAddress,
 			Handler: router,
 		},
 		service: _service,
 		router:  router,
+		config:  cfg,
 	}
 }
 

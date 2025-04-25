@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"github.com/Adigezalov/shortener/internal/config"
 	"github.com/Adigezalov/shortener/internal/service"
 	"github.com/Adigezalov/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -15,7 +16,7 @@ import (
 func TestServer(t *testing.T) {
 	// Создаем тестовый сервер
 	_storage := storage.NewMemoryStorage()
-	_service := service.NewURLService(_storage)
+	_service := service.NewURLService(_storage, "http://localhost:8080")
 	handler := NewHandlers(_service)
 
 	router := chi.NewRouter()
@@ -24,7 +25,12 @@ func TestServer(t *testing.T) {
 	defer testServer.Close()
 
 	t.Run("server initialization", func(t *testing.T) {
-		server := NewServer()
+		cfg := config.Config{
+			ServerAddress: ":8080",
+			BaseURL:       "http://localhost:8080",
+		}
+
+		server := NewServer(cfg)
 		if server.httpServer.Addr != ":8080" {
 			t.Errorf("expected server address :8080, got %s", server.httpServer.Addr)
 		}

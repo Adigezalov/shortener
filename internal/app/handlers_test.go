@@ -102,7 +102,7 @@ func TestHandleShorten(t *testing.T) {
 				}
 			}
 
-			urlService := service.NewURLService(store)
+			urlService := service.NewURLService(store, "http://localhost:8080")
 			h := &Handlers{
 				service: urlService,
 			}
@@ -225,7 +225,7 @@ func TestHandleNormal(t *testing.T) {
 				}
 			}
 
-			urlService := service.NewURLService(store)
+			urlService := service.NewURLService(store, "http://localhost:8080")
 			h := NewHandlers(urlService)
 
 			req := httptest.NewRequest(tt.method, tt.path, nil)

@@ -20,9 +20,10 @@ type URLService struct {
 	baseURL string
 }
 
-func NewURLService(storage storage.Storage) *URLService {
+func NewURLService(storage storage.Storage, baseURL string) *URLService {
 	return &URLService{
 		storage: storage,
+		baseURL: baseURL,
 	}
 }
 
