@@ -4,17 +4,19 @@ import (
 	"sync"
 )
 
-// Storage определяет интерфейс для работы с хранилищем URL
-type Storage interface {
-	// Save сохраняет соответствие короткого ID и оригинального URL
-	Save(shortID, originalURL string) error
-
-	// Get возвращает оригинальный URL по короткому ID и флаг наличия записи
+type URLGetter interface {
 	Get(shortID string) (string, bool)
+}
 
-	// Exists проверяет, существует ли уже данный оригинальный URL в хранилище
-	// Возвращает короткий ID если URL уже существует
+type URLSaver interface {
+	Save(shortID, originalURL string) error
 	Exists(originalURL string) (string, bool)
+}
+
+// URLReadWriter объединяет интерфейсы для полного доступа
+type URLReadWriter interface {
+	URLGetter
+	URLSaver
 }
 
 // MemoryStorage реализует Storage используя map в памяти

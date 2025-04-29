@@ -10,21 +10,21 @@ import (
 
 type Server struct {
 	httpServer *http.Server
-	service    *service.URLService
+	service    service.URLService
 	router     *chi.Mux
 	config     config.Config
 }
 
 func NewServer(cfg config.Config) *Server {
 	// Инициализация зависимостей
-	_storage := storage.NewMemoryStorage()
-	_service := service.NewURLService(_storage, cfg.BaseURL)
+	storage := storage.NewMemoryStorage()
+	service := service.NewURLService(storage, cfg.BaseURL)
 
 	// Создаем chi роутер
 	router := chi.NewRouter()
 
 	// Инициализируем обработчики
-	h := NewHandlers(_service)
+	h := NewHandlers(service)
 
 	// Настраиваем маршруты
 	router.Mount("/", h.Routes())
@@ -34,7 +34,7 @@ func NewServer(cfg config.Config) *Server {
 			Addr:    cfg.ServerAddress,
 			Handler: router,
 		},
-		service: _service,
+		service: service,
 		router:  router,
 		config:  cfg,
 	}

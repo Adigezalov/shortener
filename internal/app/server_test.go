@@ -24,13 +24,13 @@ func TestServer(t *testing.T) {
 	testServer := httptest.NewServer(router)
 	defer testServer.Close()
 
-	t.Run("server initialization", func(t *testing.T) {
-		cfg := config.Config{
+	t.Run("server_initialization", func(t *testing.T) {
+		cfg := &config.Config{
 			ServerAddress: ":8080",
 			BaseURL:       "http://localhost:8080",
 		}
 
-		server := NewServer(cfg)
+		server := NewServer(*cfg)
 		if server.httpServer.Addr != ":8080" {
 			t.Errorf("expected server address :8080, got %s", server.httpServer.Addr)
 		}
@@ -39,7 +39,7 @@ func TestServer(t *testing.T) {
 		}
 	})
 
-	t.Run("shorten and redirect flow", func(t *testing.T) {
+	t.Run("shorten_and_redirect_flow", func(t *testing.T) {
 		// Шаг 1: Создаем короткую ссылку
 		body := bytes.NewBufferString("http://example.com")
 		req, err := http.NewRequest(http.MethodPost, testServer.URL+"/", body)
@@ -73,7 +73,7 @@ func TestServer(t *testing.T) {
 		// Шаг 3: Проверяем редирект
 		req, err = http.NewRequest(http.MethodGet, testServer.URL+"/"+shortID, nil)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Failed to create GET request for short URL %s: %v", shortID, err)
 		}
 
 		client := &http.Client{
@@ -112,7 +112,7 @@ func TestServer(t *testing.T) {
 			expectedStatus int
 		}{
 			{
-				name:           "POST with invalid content type",
+				name:           "POST_with_invalid_content_type",
 				method:         http.MethodPost,
 				path:           "/",
 				contentType:    "application/json",
@@ -120,19 +120,19 @@ func TestServer(t *testing.T) {
 				expectedStatus: http.StatusUnsupportedMediaType,
 			},
 			{
-				name:           "GET to root",
+				name:           "GET_to_root",
 				method:         http.MethodGet,
 				path:           "/",
 				expectedStatus: http.StatusMethodNotAllowed,
 			},
 			{
-				name:           "PUT method not allowed",
+				name:           "PUT_method_not_allowed",
 				method:         http.MethodPut,
 				path:           "/",
 				expectedStatus: http.StatusMethodNotAllowed,
 			},
 			{
-				name:           "non-existent short URL",
+				name:           "non-existent_short_URL",
 				method:         http.MethodGet,
 				path:           "/nonexistent",
 				expectedStatus: http.StatusNotFound,

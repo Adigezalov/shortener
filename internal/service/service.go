@@ -15,25 +15,37 @@ var (
 	ErrURLAlreadyExist = errors.New("URL already exists")
 )
 
-type URLService struct {
-	storage storage.Storage
+// URLService определяет контракт для сервиса сокращения URL
+type URLService interface {
+	SetBaseURL(req *http.Request)
+	ShortenURL(originalURL string) (string, error)
+	GetOriginalURL(shortID string) (string, error)
+	GetShortURLIfExists(originalURL string) (string, bool)
+}
+
+// URLServiceImpl - реализация URLService
+type URLServiceImpl struct {
+	storage storage.URLReadWriter
 	baseURL string
 }
 
-func NewURLService(storage storage.Storage, baseURL string) *URLService {
-	return &URLService{
+// Проверка, что URLServiceImpl реализует URLService
+var _ URLService = (*URLServiceImpl)(nil)
+
+func NewURLService(storage storage.URLReadWriter, baseURL string) URLService {
+	return &URLServiceImpl{
 		storage: storage,
 		baseURL: baseURL,
 	}
 }
 
 // SetBaseURL устанавливает базовый URL для сервиса (должен вызываться перед использованием)
-func (s *URLService) SetBaseURL(req *http.Request) {
+func (s *URLServiceImpl) SetBaseURL(req *http.Request) {
 	s.baseURL = utils.GetBaseURL(req)
 }
 
 // ShortenURL создает короткую версию URL
-func (s *URLService) ShortenURL(originalURL string) (string, error) {
+func (s *URLServiceImpl) ShortenURL(originalURL string) (string, error) {
 	originalURL = strings.TrimSpace(originalURL)
 	if originalURL == "" {
 		return "", ErrEmptyURL
@@ -64,12 +76,13 @@ func (s *URLService) ShortenURL(originalURL string) (string, error) {
 }
 
 // GetOriginalURL возвращает оригинальный URL по короткому идентификатору
-func (s *URLService) GetOriginalURL(shortID string) (string, error) {
+func (s *URLServiceImpl) GetOriginalURL(shortID string) (string, error) {
 	if shortID == "" {
 		return "", ErrInvalidURL
 	}
 
 	originalURL, exists := s.storage.Get(shortID)
+
 	if !exists {
 		return "", ErrInvalidURL
 	}
@@ -78,7 +91,7 @@ func (s *URLService) GetOriginalURL(shortID string) (string, error) {
 }
 
 // GetShortURLIfExists возвращает короткий URL если оригинальный уже существует
-func (s *URLService) GetShortURLIfExists(originalURL string) (string, bool) {
+func (s *URLServiceImpl) GetShortURLIfExists(originalURL string) (string, bool) {
 	originalURL = strings.TrimSpace(originalURL)
 	if originalURL == "" {
 		return "", false

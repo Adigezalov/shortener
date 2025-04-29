@@ -13,8 +13,8 @@ type Config struct {
 }
 
 // ParseFlags обрабатывает аргументы командной строки и возвращает Config
-func ParseFlags() Config {
-	var cfg Config
+func ParseFlags() *Config {
+	cfg := &Config{}
 
 	// Устанавливаем значения по умолчанию
 	defaultServerAddr := "localhost:8080"

@@ -25,7 +25,7 @@ func TestHandleShorten(t *testing.T) {
 		checkStorage   bool
 	}{
 		{
-			name:           "successful shorten new URL",
+			name:           "successful_shorten_new_URL",
 			method:         http.MethodPost,
 			host:           "example.com",
 			contentType:    "text/plain",
@@ -36,7 +36,7 @@ func TestHandleShorten(t *testing.T) {
 			checkStorage:   true,
 		},
 		{
-			name:           "empty body",
+			name:           "empty_body",
 			method:         http.MethodPost,
 			contentType:    "text/plain",
 			prepopulate:    nil,
@@ -46,7 +46,7 @@ func TestHandleShorten(t *testing.T) {
 			isError:        true,
 		},
 		{
-			name:           "invalid content type",
+			name:           "invalid_content_type",
 			method:         http.MethodPost,
 			contentType:    "application/json",
 			body:           "http://example.com",
@@ -57,7 +57,7 @@ func TestHandleShorten(t *testing.T) {
 			isError:        true,
 		},
 		{
-			name:           "wrong HTTP method",
+			name:           "wrong_HTTP_method",
 			method:         http.MethodGet,
 			contentType:    "text/plain",
 			body:           "http://example.com",
@@ -68,18 +68,18 @@ func TestHandleShorten(t *testing.T) {
 			isError:        true,
 		},
 		{
-			name:           "invalid URL",
+			name:           "invalid_URL",
 			method:         http.MethodPost,
 			contentType:    "text/plain",
 			body:           "invalid-url",
 			prepopulate:    nil,
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid URL\n",
+			expectedBody:   "invalid URL\n",
 			checkStorage:   false,
 			isError:        true,
 		},
 		{
-			name:        "URL already exists",
+			name:        "URL_already_exists",
 			method:      http.MethodPost,
 			host:        "localhost:8080",
 			contentType: "text/plain",

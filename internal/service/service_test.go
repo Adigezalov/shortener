@@ -19,7 +19,7 @@ func TestURLService_SetBaseURL(t *testing.T) {
 	expectedBaseURL := utils.GetBaseURL(req)
 
 	// Создаём экземпляр URLService
-	service := &URLService{
+	service := &URLServiceImpl{
 		storage: nil, // storage не используется в этом тесте
 	}
 

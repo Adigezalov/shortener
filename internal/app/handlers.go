@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"github.com/Adigezalov/shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"io"
@@ -10,10 +11,10 @@ import (
 )
 
 type Handlers struct {
-	service *service.URLService
+	service service.URLService
 }
 
-func NewHandlers(service *service.URLService) *Handlers {
+func NewHandlers(service service.URLService) *Handlers {
 	return &Handlers{service: service}
 }
 
@@ -57,30 +58,37 @@ func (h *Handlers) handleShorten(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
 
-		_, _ = w.Write([]byte(shortURL))
+		if _, err := w.Write([]byte(shortURL)); err != nil {
+			log.Printf("Failed to write response: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 
 		return
 	}
 
 	// Создаем новый короткий URL
 	shortURL, err := h.service.ShortenURL(originalURL)
+
 	if err != nil {
-		switch err {
-		case service.ErrInvalidURL:
-			http.Error(w, "Invalid URL", http.StatusBadRequest)
-		case service.ErrEmptyURL:
-			http.Error(w, "Empty URL", http.StatusBadRequest)
-		default:
-			log.Printf("Failed to shorten URL: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		if errors.Is(err, service.ErrInvalidURL) || errors.Is(err, service.ErrEmptyURL) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
+
+		log.Printf("Failed to shorten URL '%s': %v", originalURL, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 
-	_, _ = w.Write([]byte(shortURL))
+	if _, err := w.Write([]byte(shortURL)); err != nil {
+		log.Printf("Failed to write response: %v (shortURL: %s)", err, shortURL)
+
+		return
+	}
 }
 
 func (h *Handlers) handleNormal(w http.ResponseWriter, r *http.Request) {
