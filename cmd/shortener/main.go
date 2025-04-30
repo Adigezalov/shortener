@@ -9,7 +9,7 @@ import (
 func main() {
 	cfg := config.ParseFlags()
 
-	server := app.NewServer(cfg)
+	server := app.NewServer(*cfg)
 
 	log.Printf("Server starting on %s\n", cfg.ServerAddress)
 	log.Printf("Base URL for short links: %s\n", cfg.BaseURL)
