@@ -10,7 +10,7 @@ import (
 
 type Server struct {
 	httpServer *http.Server
-	service    service.URLService
+	service    URLService
 	router     *chi.Mux
 	config     config.Config
 }
