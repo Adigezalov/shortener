@@ -11,11 +11,6 @@ func main() {
 
 	server := app.NewServer(*cfg)
 
-	defer func() {
-		if err := server.Logger.Sync(); err != nil {
-		}
-	}()
-
 	if err := server.ListenAndServe(); err != nil {
 		server.Logger.Fatal("Server failed", zap.Error(err))
 	}
