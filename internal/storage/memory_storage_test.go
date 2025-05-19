@@ -3,7 +3,7 @@ package storage
 import "testing"
 
 func TestNewMemoryStorage(t *testing.T) {
-	storage := NewMemoryStorage("storage.json")
+	storage := NewMemoryStorage("storage")
 
 	if storage == nil {
 		t.Fatal("expected non-nil MemoryStorage")
@@ -27,7 +27,7 @@ func TestNewMemoryStorage(t *testing.T) {
 }
 
 func TestMemoryStorage_Save(t *testing.T) {
-	storage := NewMemoryStorage("storage.json")
+	storage := NewMemoryStorage("tmp/storage")
 
 	shortID := "abc123"
 	originalURL := "https://example.com"
@@ -55,7 +55,7 @@ func TestMemoryStorage_Save(t *testing.T) {
 }
 
 func TestMemoryStorage_Get(t *testing.T) {
-	storage := NewMemoryStorage("storage.json")
+	storage := NewMemoryStorage("tmp/storage")
 
 	shortID := "abc123"
 	originalURL := "https://example.com"
@@ -82,7 +82,7 @@ func TestMemoryStorage_Get(t *testing.T) {
 }
 
 func TestMemoryStorage_Exists(t *testing.T) {
-	storage := NewMemoryStorage("storage.json")
+	storage := NewMemoryStorage("tmp/storage")
 
 	shortID := "abc123"
 	originalURL := "https://example.com"

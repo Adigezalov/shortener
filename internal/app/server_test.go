@@ -15,7 +15,7 @@ import (
 
 func TestServer(t *testing.T) {
 	// Создаем тестовый сервер с middleware
-	service := service.NewURLService("http://localhost:8080", "storage.json")
+	service := service.NewURLService("http://localhost:8080", "tmp/storage")
 	handler := NewHandlers(service)
 
 	router := chi.NewRouter()
