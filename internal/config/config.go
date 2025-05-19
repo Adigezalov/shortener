@@ -13,7 +13,7 @@ func ParseFlags() *Config {
 	// Устанавливаем значения по умолчанию
 	defaultServerAddr := "localhost:8080"
 	defaultBaseURL := "http://localhost:8080"
-	defaultFileStoragePath := "storage.json"
+	defaultFileStoragePath := "tmp/storage.json"
 
 	// Сначала проверяем переменные окружения
 	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {

@@ -5,10 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 )
 
 // SaveToFile сохраняет список записей в указанный файл
 func SaveToFile(filePath string, records []URLRecord) error {
+	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		return err
+	}
+
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
