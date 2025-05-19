@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"github.com/Adigezalov/shortener/internal/storage"
 	"github.com/Adigezalov/shortener/pkg/utils"
 	"net/http"
@@ -15,16 +16,13 @@ var (
 	ErrURLAlreadyExist = errors.New("URL already exists")
 )
 
-// URLServiceImpl - реализация URLService
-type URLServiceImpl struct {
-	storage storage.URLReadWriter
-	baseURL string
-}
+func NewURLService(baseURL string, filePath string) *URLServiceImpl {
+	storage := storage.NewMemoryStorage(filePath)
 
-func NewURLService(storage storage.URLReadWriter, baseURL string) *URLServiceImpl {
 	return &URLServiceImpl{
-		storage: storage,
-		baseURL: baseURL,
+		storage:  storage,
+		baseURL:  baseURL,
+		filePath: filePath,
 	}
 }
 
@@ -45,6 +43,11 @@ func (s *URLServiceImpl) ShortenURL(originalURL string) (string, error) {
 		return "", ErrInvalidURL
 	}
 
+	// Проверяем существование URL в памяти (данные уже загружены при старте)
+	if shortID, exists := s.storage.Exists(originalURL); exists {
+		return s.baseURL + shortID, ErrURLAlreadyExist
+	}
+
 	// Проверяем, не сокращали ли уже этот URL
 	if shortID, exists := s.storage.Exists(originalURL); exists {
 		return s.baseURL + shortID, ErrURLAlreadyExist
@@ -59,6 +62,21 @@ func (s *URLServiceImpl) ShortenURL(originalURL string) (string, error) {
 	// Сохраняем в хранилище
 	if err := s.storage.Save(shortID, originalURL); err != nil {
 		return "", err
+	}
+
+	// Загружаем текущие записи из файла
+	records, _ := storage.LoadFromFile(s.filePath)
+
+	// Добавляем новую запись
+	records = append(records, storage.URLRecord{
+		UUID:        shortID,
+		ShortURL:    s.baseURL + shortID,
+		OriginalURL: originalURL,
+	})
+
+	// Сохраняем обновленные записи обратно в файл
+	if err := storage.SaveToFile(s.filePath, records); err != nil {
+		return "", fmt.Errorf("failed to save records to file: %w", err)
 	}
 
 	return s.baseURL + shortID, nil

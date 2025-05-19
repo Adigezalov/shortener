@@ -2,6 +2,18 @@ package app
 
 import "net/http"
 
+type Handlers struct {
+	service URLService
+}
+
+type shortenRequest struct {
+	URL string `json:"url"`
+}
+
+type shortenResponse struct {
+	Result string `json:"result"`
+}
+
 // URLService определяет контракт для сервиса сокращения URL
 type URLService interface {
 	SetBaseURL(req *http.Request)
