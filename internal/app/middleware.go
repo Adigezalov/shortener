@@ -96,7 +96,6 @@ func ungzipMiddleware(next http.Handler) http.Handler {
 			r.ContentLength = int64(buf.Len())
 			r.Header.Del("Content-Encoding")
 
-			// Fix Content-Type for gzipped requests
 			if r.Header.Get("Content-Type") == "application/x-gzip" {
 				if strings.HasPrefix(r.URL.Path, "/api") {
 					r.Header.Set("Content-Type", "application/json")

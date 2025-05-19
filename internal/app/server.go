@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/Adigezalov/shortener/internal/config"
 	"github.com/Adigezalov/shortener/internal/service"
-	"github.com/Adigezalov/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 	"net/http"
@@ -25,8 +24,7 @@ func NewServer(cfg config.Config) *Server {
 	}
 
 	// Инициализация зависимостей
-	storage := storage.NewMemoryStorage()
-	service := service.NewURLService(storage, cfg.BaseURL)
+	service := service.NewURLService(cfg.BaseURL, cfg.FileStoragePath)
 
 	// Создаем chi роутер
 	router := chi.NewRouter()

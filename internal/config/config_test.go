@@ -100,11 +100,16 @@ func TestConfigDefaults(t *testing.T) {
 	// Очищаем окружение для этого теста
 	oldServerAddr := os.Getenv("SERVER_ADDRESS")
 	oldBaseURL := os.Getenv("BASE_URL")
+	oldFileStoragePath := os.Getenv("FILE_STORAGE_PATH")
+
 	os.Unsetenv("SERVER_ADDRESS")
 	os.Unsetenv("BASE_URL")
+	os.Unsetenv("FILE_STORAGE_PATH")
+
 	defer func() {
 		os.Setenv("SERVER_ADDRESS", oldServerAddr)
 		os.Setenv("BASE_URL", oldBaseURL)
+		os.Setenv("FILE_STORAGE_PATH", oldFileStoragePath)
 	}()
 
 	// Сбрасываем флаги
@@ -113,8 +118,9 @@ func TestConfigDefaults(t *testing.T) {
 	cfg := ParseFlags()
 
 	defaults := &Config{
-		ServerAddress: "localhost:8080",
-		BaseURL:       "http://localhost:8080",
+		ServerAddress:   "localhost:8080",
+		BaseURL:         "http://localhost:8080",
+		FileStoragePath: "storage.json",
 	}
 
 	if !reflect.DeepEqual(cfg, defaults) {

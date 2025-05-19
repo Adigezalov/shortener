@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"github.com/Adigezalov/shortener/internal/config"
 	"github.com/Adigezalov/shortener/internal/service"
-	"github.com/Adigezalov/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
@@ -16,9 +15,8 @@ import (
 
 func TestServer(t *testing.T) {
 	// Создаем тестовый сервер с middleware
-	_storage := storage.NewMemoryStorage()
-	_service := service.NewURLService(_storage, "http://localhost:8080")
-	handler := NewHandlers(_service)
+	service := service.NewURLService("http://localhost:8080", "storage.json")
+	handler := NewHandlers(service)
 
 	router := chi.NewRouter()
 	// Добавляем middleware как в реальном сервере

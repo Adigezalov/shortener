@@ -6,12 +6,6 @@ import (
 	"strings"
 )
 
-// Config хранит все параметры конфигурации приложения
-type Config struct {
-	ServerAddress string // Адрес запуска HTTP-сервера (флаг -a)
-	BaseURL       string // Базовый адрес для сокращенных URL (флаг -b)
-}
-
 // ParseFlags обрабатывает аргументы командной строки и возвращает Config
 func ParseFlags() *Config {
 	cfg := &Config{}
@@ -19,6 +13,7 @@ func ParseFlags() *Config {
 	// Устанавливаем значения по умолчанию
 	defaultServerAddr := "localhost:8080"
 	defaultBaseURL := "http://localhost:8080"
+	defaultFileStoragePath := "storage.json"
 
 	// Сначала проверяем переменные окружения
 	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
@@ -29,9 +24,14 @@ func ParseFlags() *Config {
 		defaultBaseURL = strings.TrimRight(envBaseURL, "/")
 	}
 
+	if envFileStoragePath := os.Getenv(" FILE_STORAGE_PATH "); envFileStoragePath != "" {
+		defaultFileStoragePath = envFileStoragePath
+	}
+
 	// Затем парсим флаги, которые могут переопределить значения
 	flag.StringVar(&cfg.ServerAddress, "a", defaultServerAddr, "HTTP server address")
 	flag.StringVar(&cfg.BaseURL, "b", defaultBaseURL, "Base URL for shortened links")
+	flag.StringVar(&cfg.FileStoragePath, "f", defaultFileStoragePath, "File storage path")
 
 	flag.Parse()
 
