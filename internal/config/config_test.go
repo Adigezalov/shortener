@@ -120,7 +120,7 @@ func TestConfigDefaults(t *testing.T) {
 	defaults := &Config{
 		ServerAddress:   "localhost:8080",
 		BaseURL:         "http://localhost:8080",
-		FileStoragePath: "tmp/storage",
+		FileStoragePath: "/tmp/storage",
 	}
 
 	if !reflect.DeepEqual(cfg, defaults) {
