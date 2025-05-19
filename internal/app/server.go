@@ -7,7 +7,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 	"net/http"
-	"time"
 )
 
 type Server struct {
@@ -32,8 +31,11 @@ func NewServer(cfg config.Config) *Server {
 	// Создаем chi роутер
 	router := chi.NewRouter()
 
-	// Добавляем middleware для логирования
-	router.Use(loggingMiddleware(logger))
+	router.Use(
+		ungzipMiddleware,
+		loggingMiddleware(logger),
+		gzipMiddleware,
+	)
 
 	// Инициализируем обработчики
 	h := NewHandlers(service)
@@ -59,30 +61,6 @@ func (s *Server) ListenAndServe() error {
 		zap.String("baseURL", s.config.BaseURL),
 	)
 	return s.httpServer.ListenAndServe()
-}
-
-// loggingMiddleware создает middleware для логирования запросов и ответов
-func loggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-
-			// Создаем обертку для ResponseWriter, чтобы получить статус и размер ответа
-			wrapped := wrapResponseWriter(w)
-
-			// Продолжаем выполнение цепочки обработчиков
-			next.ServeHTTP(wrapped, r)
-
-			// Логируем информацию о запросе и ответе
-			logger.Info("request completed",
-				zap.String("uri", r.RequestURI),
-				zap.String("method", r.Method),
-				zap.Int("status", wrapped.status),
-				zap.Int("size", wrapped.size),
-				zap.Duration("duration", time.Since(start)),
-			)
-		})
-	}
 }
 
 // responseWriterWrapper оборачивает http.ResponseWriter для получения статуса и размера ответа
