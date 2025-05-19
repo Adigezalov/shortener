@@ -24,7 +24,7 @@ func ParseFlags() *Config {
 		defaultBaseURL = strings.TrimRight(envBaseURL, "/")
 	}
 
-	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH "); envFileStoragePath != "" {
+	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
 		defaultFileStoragePath = envFileStoragePath
 	}
 
