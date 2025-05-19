@@ -75,30 +75,36 @@ func gzipMiddleware(next http.Handler) http.Handler {
 func ungzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check if request is gzipped
-		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
-			next.ServeHTTP(w, r)
-			return
-		}
+		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+			// Create gzip reader
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to create gzip reader", http.StatusBadRequest)
+				return
+			}
+			defer gz.Close()
 
-		// Create gzip reader
-		gz, err := gzip.NewReader(r.Body)
-		if err != nil {
-			http.Error(w, "Failed to create gzip reader", http.StatusBadRequest)
-			return
-		}
-		defer gz.Close()
+			// Read decompressed data
+			var buf bytes.Buffer
+			if _, err := io.Copy(&buf, gz); err != nil {
+				http.Error(w, "Failed to decompress data", http.StatusBadRequest)
+				return
+			}
 
-		// Read decompressed data
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, gz); err != nil {
-			http.Error(w, "Failed to decompress data", http.StatusBadRequest)
-			return
-		}
+			// Replace body with decompressed data
+			r.Body = io.NopCloser(&buf)
+			r.ContentLength = int64(buf.Len())
+			r.Header.Del("Content-Encoding")
 
-		// Replace body with decompressed data
-		r.Body = io.NopCloser(&buf)
-		r.ContentLength = int64(buf.Len())
-		r.Header.Del("Content-Encoding")
+			// Fix Content-Type for gzipped requests
+			if r.Header.Get("Content-Type") == "application/x-gzip" {
+				if strings.HasPrefix(r.URL.Path, "/api") {
+					r.Header.Set("Content-Type", "application/json")
+				} else {
+					r.Header.Set("Content-Type", "text/plain")
+				}
+			}
+		}
 
 		next.ServeHTTP(w, r)
 	})
