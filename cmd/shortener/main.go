@@ -42,17 +42,17 @@ func main() {
 	// Создаем новый роутер chi
 	r := chi.NewRouter()
 
-	// Добавляем middleware
+	// Добавляем глобальные middleware
 	r.Use(middleware.CleanPath)              // Очистка пути URL
 	r.Use(customMiddleware.LoggingRecoverer) // Восстановление после паники с логированием
 	r.Use(customMiddleware.WithRequestID)    // Добавление ID запроса
 	r.Use(customMiddleware.RequestLogger)    // Логирование запросов и ответов
 	r.Use(customMiddleware.GzipMiddleware)   // Обработка gzip сжатия
 
-	// Определяем маршруты
-	r.Post("/", handler.CreateShortURL)        // Эндпоинт для создания сокращенного URL (text/plain)
-	r.Get("/{id}", handler.RedirectToURL)      // Эндпоинт для перенаправления по идентификатору
-	r.Post("/api/shorten", handler.ShortenURL) // Эндпоинт для создания сокращенного URL (JSON)
+	// Определяем маршруты с соответствующими middleware
+	r.With(customMiddleware.TextPlainContentTypeMiddleware()).Post("/", handler.CreateShortURL)
+	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten", handler.ShortenURL)
+	r.Get("/{id}", handler.RedirectToURL)
 
 	// Настраиваем корректное завершение сервера
 	srv := &http.Server{
