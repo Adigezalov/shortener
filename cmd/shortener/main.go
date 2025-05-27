@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/Adigezalov/shortener/internal/config"
 	"github.com/Adigezalov/shortener/internal/handlers"
 	"github.com/Adigezalov/shortener/internal/logger"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -80,9 +82,12 @@ func main() {
 
 	logger.Logger.Info("Завершение работы сервера, сохранение данных...")
 
+	// Создаем контекст с таймаутом для корректного завершения
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	// Завершаем работу сервера
-	if err := srv.Shutdown(nil); err != nil {
+	if err := srv.Shutdown(ctx); err != nil {
 		logger.Logger.Error("Ошибка при завершении работы сервера", zap.Error(err))
 	}
-
 }

@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+// contextKey пользовательский тип для ключей контекста
+type contextKey string
+
+// Определяем константы для ключей контекста
+const requestIDKey contextKey = "requestID"
+
 // responseWriter является оберткой для http.ResponseWriter для отслеживания статуса и размера ответа
 type responseWriter struct {
 	http.ResponseWriter
@@ -96,7 +102,7 @@ func WithRequestID(next http.Handler) http.Handler {
 		w.Header().Set("X-Request-ID", requestID)
 
 		// Создаем новый контекст с ID запроса
-		ctx := context.WithValue(r.Context(), "requestID", requestID)
+		ctx := context.WithValue(r.Context(), requestIDKey, requestID)
 
 		// Логируем с ID запроса
 		logger.Logger.Info("Request started",
@@ -108,6 +114,14 @@ func WithRequestID(next http.Handler) http.Handler {
 		// Вызываем следующий обработчик с обновленным контекстом
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// GetRequestID возвращает ID запроса из контекста
+func GetRequestID(ctx context.Context) string {
+	if id, ok := ctx.Value(requestIDKey).(string); ok {
+		return id
+	}
+	return "unknown"
 }
 
 // generateRequestID создает уникальный идентификатор запроса
