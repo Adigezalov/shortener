@@ -13,8 +13,16 @@ func ContentTypeMiddleware(contentType string) func(http.Handler) http.Handler {
 			if r.Method != http.MethodGet {
 				// Проверяем Content-Type
 				ct := r.Header.Get("Content-Type")
+
+				// Разрешаем gzip-сжатие
+				if ct == "application/x-gzip" && r.Header.Get("Content-Encoding") == "gzip" {
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				// Проверяем основной Content-Type
 				if !strings.Contains(ct, contentType) {
-					http.Error(w, "Invalid Content-Type", http.StatusBadRequest)
+					http.Error(w, "Invalid Content-Type", http.StatusUnsupportedMediaType)
 					return
 				}
 			}
