@@ -6,37 +6,58 @@ import (
 	"strings"
 )
 
-// Config хранит все параметры конфигурации приложения
+// Config содержит конфигурационные параметры приложения
 type Config struct {
-	ServerAddress string // Адрес запуска HTTP-сервера (флаг -a)
-	BaseURL       string // Базовый адрес для сокращенных URL (флаг -b)
+	// ServerAddress адрес запуска HTTP-сервера
+	ServerAddress string
+	// BaseURL базовый адрес для сокращенных URL
+	BaseURL string
+	// FileStoragePath путь к файлу хранения
+	FileStoragePath string
 }
 
-// ParseFlags обрабатывает аргументы командной строки и возвращает Config
-func ParseFlags() *Config {
+// NewConfig создает и инициализирует конфигурацию из аргументов командной строки и переменных окружения
+func NewConfig() *Config {
 	cfg := &Config{}
 
 	// Устанавливаем значения по умолчанию
-	defaultServerAddr := "localhost:8080"
-	defaultBaseURL := "http://localhost:8080"
+	serverAddress := "localhost:8080"
+	baseURL := "http://localhost:8080"
+	fileStoragePath := "./storage.json"
 
-	// Сначала проверяем переменные окружения
-	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
-		defaultServerAddr = envRunAddr
+	// Проверяем переменные окружения
+	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
+		serverAddress = envServerAddr
 	}
-
 	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
-		defaultBaseURL = strings.TrimRight(envBaseURL, "/")
+		baseURL = envBaseURL
 	}
 
-	// Затем парсим флаги, которые могут переопределить значения
-	flag.StringVar(&cfg.ServerAddress, "a", defaultServerAddr, "HTTP server address")
-	flag.StringVar(&cfg.BaseURL, "b", defaultBaseURL, "Base URL for shortened links")
+	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
+		fileStoragePath = envFileStoragePath
+	}
 
+	// Регистрируем флаги командной строки
+	flag.StringVar(&cfg.ServerAddress, "a", serverAddress, "адрес запуска HTTP-сервера")
+	flag.StringVar(&cfg.BaseURL, "b", baseURL, "базовый адрес для сокращенных URL")
+	flag.StringVar(&cfg.FileStoragePath, "f", fileStoragePath, "путь к файлу хранения URL")
+
+	// Разбираем флаги
 	flag.Parse()
 
-	// Убедимся, что BaseURL не заканчивается на "/"
-	cfg.BaseURL = strings.TrimRight(cfg.BaseURL, "/")
+	// Валидируем и нормализуем конфигурацию
+	cfg.normalize()
 
 	return cfg
+}
+
+// normalize выполняет нормализацию и валидацию параметров конфигурации
+func (c *Config) normalize() {
+	// Убеждаемся, что BaseURL не заканчивается слешем
+	c.BaseURL = strings.TrimSuffix(c.BaseURL, "/")
+
+	// Если в BaseURL не указан протокол, добавляем http://
+	if !strings.HasPrefix(c.BaseURL, "http://") && !strings.HasPrefix(c.BaseURL, "https://") {
+		c.BaseURL = "http://" + c.BaseURL
+	}
 }
