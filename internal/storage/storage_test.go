@@ -41,6 +41,7 @@ func TestMemoryStorage_Save(t *testing.T) {
 	if !ok {
 		t.Errorf("shortID %q not found in urlStore", shortID)
 	}
+
 	if gotURL != originalURL {
 		t.Errorf("expected originalURL %q, got %q", originalURL, gotURL)
 	}
@@ -49,6 +50,7 @@ func TestMemoryStorage_Save(t *testing.T) {
 	if !ok {
 		t.Errorf("originalURL %q not found in reverseStore", originalURL)
 	}
+
 	if gotShortID != shortID {
 		t.Errorf("expected shortID %q, got %q", shortID, gotShortID)
 	}
@@ -76,6 +78,7 @@ func TestMemoryStorage_Get(t *testing.T) {
 	if !exists {
 		t.Errorf("expected shortID %q to exist after save", shortID)
 	}
+
 	if gotURL != originalURL {
 		t.Errorf("expected originalURL %q, got %q", originalURL, gotURL)
 	}
@@ -103,6 +106,7 @@ func TestMemoryStorage_Exists(t *testing.T) {
 	if !exists {
 		t.Errorf("expected originalURL %q to exist after save", originalURL)
 	}
+
 	if gotShortID != shortID {
 		t.Errorf("expected shortID %q, got %q", shortID, gotShortID)
 	}
