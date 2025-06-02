@@ -10,6 +10,18 @@ type ShortenResponse struct {
 	Result string `json:"result"`
 }
 
+// BatchShortenRequest представляет элемент запроса на пакетное сокращение URL
+type BatchShortenRequest struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+// BatchShortenResponse представляет элемент ответа на пакетное сокращение URL
+type BatchShortenResponse struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
 // URLRecord представляет запись URL для сохранения
 type URLRecord struct {
 	UUID        string `json:"uuid"`

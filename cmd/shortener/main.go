@@ -71,6 +71,7 @@ func main() {
 	r.Get("/ping", handler.PingDB)
 	r.With(customMiddleware.TextPlainContentTypeMiddleware()).Post("/", handler.CreateShortURL)
 	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten", handler.ShortenURL)
+	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten/batch", handler.ShortenBatch)
 	r.Get("/{id}", handler.RedirectToURL)
 
 	// Настраиваем HTTP-сервер
