@@ -26,7 +26,6 @@ func NewConfig() *Config {
 	serverAddress := ":8080"
 	baseURL := "http://localhost:8080"
 	fileStoragePath := "storage.json"
-	// Для тестов используем пустую строку подключения
 	databaseDSN := ""
 
 	// Проверяем переменные окружения

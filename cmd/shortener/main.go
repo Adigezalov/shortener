@@ -30,7 +30,14 @@ func main() {
 	// Загружаем конфигурацию
 	cfg := config.NewConfig()
 
-	// Инициализируем подключение к базе данных, если указан DSN
+	// Инициализируем хранилище URL с помощью фабрики
+	store, err := storage.Factory(cfg.DatabaseDSN, cfg.FileStoragePath)
+	if err != nil {
+		logger.Logger.Fatal("Ошибка инициализации хранилища", zap.Error(err))
+	}
+	defer store.Close()
+
+	// Инициализируем подключение к базе данных для хендлера /ping
 	var dbInterface database.DBInterface
 	if cfg.DatabaseDSN != "" {
 		db, err := database.New(cfg.DatabaseDSN)
@@ -43,10 +50,6 @@ func main() {
 		// Для тестов используем мок базы данных
 		dbInterface = &database.MockDB{}
 	}
-
-	// Инициализируем хранилище URL
-	store := storage.New(cfg.FileStoragePath)
-	defer store.Close()
 
 	// Инициализируем сервис сокращения URL
 	shortenerService := shortener.New(cfg.BaseURL)

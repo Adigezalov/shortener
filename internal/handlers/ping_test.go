@@ -2,23 +2,21 @@ package handlers
 
 import (
 	"errors"
+	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-// MockDB мок для базы данных
-type MockDB struct {
+// TestMockDB расширяет database.MockDB для тестов
+type TestMockDB struct {
+	database.MockDB
 	pingErr error
 }
 
-func (m *MockDB) Ping() error {
+func (m *TestMockDB) Ping() error {
 	return m.pingErr
-}
-
-func (m *MockDB) Close() error {
-	return nil
 }
 
 func TestHandler_PingDB(t *testing.T) {
@@ -42,7 +40,7 @@ func TestHandler_PingDB(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Создаем мок базы данных
-			mockDB := &MockDB{pingErr: tt.pingErr}
+			mockDB := &TestMockDB{pingErr: tt.pingErr}
 
 			// Создаем обработчик с моком
 			h := &Handler{
