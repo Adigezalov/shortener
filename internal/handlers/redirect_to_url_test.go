@@ -27,7 +27,7 @@ func TestHandler_RedirectToURL(t *testing.T) {
 		expectedURL    string
 	}{
 		{
-			name:  "Успешное перенаправление",
+			name:  "Успешное_перенаправление",
 			urlID: "abc123",
 			mockSetup: func(ms *MockStorage) {
 				ms.On("Get", "abc123").Return("https://example.com", true)
@@ -36,7 +36,7 @@ func TestHandler_RedirectToURL(t *testing.T) {
 			expectedURL:    "https://example.com",
 		},
 		{
-			name:  "URL не найден",
+			name:  "URL_не_найден",
 			urlID: "notfound",
 			mockSetup: func(ms *MockStorage) {
 				ms.On("Get", "notfound").Return("", false)
@@ -45,7 +45,7 @@ func TestHandler_RedirectToURL(t *testing.T) {
 			expectedURL:    "",
 		},
 		{
-			name:           "Некорректный ID",
+			name:           "Некорректный_ID",
 			urlID:          "//", // Некорректный ID, который вызовет 404 в Chi router
 			mockSetup:      func(ms *MockStorage) {},
 			expectedStatus: http.StatusNotFound,
