@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/Adigezalov/shortener/internal/models"
 	"github.com/stretchr/testify/assert"
@@ -30,35 +31,35 @@ func TestHandler_ShortenURL(t *testing.T) {
 		expectedResult string
 	}{
 		{
-			name: "Успешное_создание_нового_короткого_URL",
+			name: "Успешное создание нового короткого URL",
 			request: models.ShortenRequest{
 				URL: "https://example.com",
 			},
 			contentType: "application/json",
 			mockSetup: func(ms *MockStorage, msh *MockShortener) {
-				ms.On("FindByOriginalURL", "https://example.com").Return("", false)
 				msh.On("Shorten", "https://example.com").Return("abc123")
-				ms.On("Add", "abc123", "https://example.com").Return("abc123", false)
+				ms.On("Add", "abc123", "https://example.com").Return("abc123", false, nil)
 				msh.On("BuildShortURL", "abc123").Return("http://short.url/abc123")
 			},
 			expectedStatus: http.StatusCreated,
 			expectedResult: "http://short.url/abc123",
 		},
 		{
-			name: "URL_уже_существует_в_базе",
+			name: "URL уже существует в базе",
 			request: models.ShortenRequest{
 				URL: "https://example.com",
 			},
 			contentType: "application/json",
 			mockSetup: func(ms *MockStorage, msh *MockShortener) {
-				ms.On("FindByOriginalURL", "https://example.com").Return("existing123", true)
-				msh.On("BuildShortURL", "existing123").Return("http://short.url/existing123")
+				msh.On("Shorten", "https://example.com").Return("abc123")
+				ms.On("Add", "abc123", "https://example.com").Return("abc123", true, database.ErrURLConflict)
+				msh.On("BuildShortURL", "abc123").Return("http://short.url/abc123")
 			},
-			expectedStatus: http.StatusCreated,
-			expectedResult: "http://short.url/existing123",
+			expectedStatus: http.StatusConflict,
+			expectedResult: "http://short.url/abc123",
 		},
 		{
-			name: "Пустой_URL",
+			name: "Пустой URL",
 			request: models.ShortenRequest{
 				URL: "",
 			},
@@ -68,7 +69,7 @@ func TestHandler_ShortenURL(t *testing.T) {
 			expectedResult: "",
 		},
 		{
-			name: "Неверный_Content-Type",
+			name: "Неверный Content-Type",
 			request: models.ShortenRequest{
 				URL: "https://example.com",
 			},
@@ -108,8 +109,8 @@ func TestHandler_ShortenURL(t *testing.T) {
 			// Проверяем статус код
 			assert.Equal(t, tt.expectedStatus, w.Code)
 
-			// Если ожидается успешный ответ, проверяем результат
-			if tt.expectedStatus == http.StatusCreated {
+			// Если ожидается успешный ответ или конфликт, проверяем результат
+			if tt.expectedStatus == http.StatusCreated || tt.expectedStatus == http.StatusConflict {
 				var response models.ShortenResponse
 				err := json.NewDecoder(w.Body).Decode(&response)
 				assert.NoError(t, err)

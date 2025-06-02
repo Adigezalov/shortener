@@ -6,6 +6,8 @@ import (
 	"github.com/Adigezalov/shortener/internal/models"
 	"go.uber.org/zap"
 	"net/http"
+
+	"github.com/Adigezalov/shortener/internal/database"
 )
 
 // ShortenBatch обрабатывает POST запрос на пакетное создание сокращенных URL
@@ -43,16 +45,14 @@ func (h *Handler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		var id string
-		var exists bool
-
-		// Сначала проверяем, есть ли такой URL в хранилище
-		id, exists = h.storage.FindByOriginalURL(item.OriginalURL)
-		if !exists {
-			// Если URL не найден, генерируем новый ID
-			id = h.shortener.Shorten(item.OriginalURL)
-			// Добавляем URL в хранилище
-			id, _ = h.storage.Add(id, item.OriginalURL)
+		// Генерируем новый ID и пытаемся добавить URL
+		id := h.shortener.Shorten(item.OriginalURL)
+		id, exists, err := h.storage.Add(id, item.OriginalURL)
+		if err != nil && err != database.ErrURLConflict {
+			logger.Logger.Error("Ошибка добавления URL",
+				zap.String("correlation_id", item.CorrelationID),
+				zap.Error(err))
+			continue
 		}
 
 		// Строим полный короткий URL

@@ -3,12 +3,18 @@ package database
 import (
 	"database/sql"
 	"embed"
+	"errors"
+	"github.com/jackc/pgerrcode"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"strings"
 )
 
 //go:embed schema.sql
 var schemaFS embed.FS
+
+// ErrURLConflict ошибка при попытке добавить существующий URL
+var ErrURLConflict = errors.New("url already exists")
 
 // DBInterface описывает интерфейс для работы с базой данных
 type DBInterface interface {
@@ -100,19 +106,28 @@ func (db *DB) initSchema() error {
 
 // AddURL добавляет новый URL в базу данных
 func (db *DB) AddURL(shortID, originalURL string) (string, bool, error) {
-	// Проверяем, существует ли уже такой URL
-	if existingID, exists, err := db.FindByOriginalURL(originalURL); err == nil && exists {
-		return existingID, true, nil
-	}
-
-	// Добавляем новый URL
+	// Пытаемся добавить новый URL
 	_, err := db.Exec(`
 		INSERT INTO urls (short_id, original_url)
-		VALUES ($1, $2)
-		ON CONFLICT (short_id) DO NOTHING`,
+		VALUES ($1, $2)`,
 		shortID, originalURL)
 
 	if err != nil {
+		// Проверяем, является ли ошибка нарушением уникальности
+		if pqErr, ok := err.(*pq.Error); ok {
+			if pqErr.Code == pgerrcode.UniqueViolation {
+				// Если это нарушение уникальности original_url, получаем существующий short_id
+				if strings.Contains(pqErr.Constraint, "original_url") {
+					existingID, exists, err := db.FindByOriginalURL(originalURL)
+					if err != nil {
+						return "", false, err
+					}
+					if exists {
+						return existingID, true, ErrURLConflict
+					}
+				}
+			}
+		}
 		return "", false, err
 	}
 

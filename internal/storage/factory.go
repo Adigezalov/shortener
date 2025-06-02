@@ -12,14 +12,9 @@ func Factory(dbDSN, filePath string) (URLStorage, error) {
 		if err != nil {
 			return nil, err
 		}
-		return NewDBStorage(db), nil
+		return NewDatabaseStorage(db), nil
 	}
 
-	// Если нет DSN, но есть путь к файлу, используем файловое хранилище
-	if filePath != "" {
-		return NewFileStorage(filePath), nil
-	}
-
-	// По умолчанию используем хранилище в памяти
-	return NewMemoryStorage(), nil
+	// Если нет DSN, создаем хранилище в памяти с опциональным сохранением в файл
+	return NewMemoryStorage(filePath), nil
 }

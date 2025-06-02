@@ -44,15 +44,13 @@ func TestHandler_ShortenBatch(t *testing.T) {
 			contentType: "application/json",
 			mockSetup: func(ms *MockStorage, msh *MockShortener) {
 				// Первый URL
-				ms.On("FindByOriginalURL", "https://example1.com").Return("", false)
 				msh.On("Shorten", "https://example1.com").Return("abc123")
-				ms.On("Add", "abc123", "https://example1.com").Return("abc123", false)
+				ms.On("Add", "abc123", "https://example1.com").Return("abc123", false, nil)
 				msh.On("BuildShortURL", "abc123").Return("http://short.url/abc123")
 
 				// Второй URL
-				ms.On("FindByOriginalURL", "https://example2.com").Return("", false)
 				msh.On("Shorten", "https://example2.com").Return("def456")
-				ms.On("Add", "def456", "https://example2.com").Return("def456", false)
+				ms.On("Add", "def456", "https://example2.com").Return("def456", false, nil)
 				msh.On("BuildShortURL", "def456").Return("http://short.url/def456")
 			},
 			expectedStatus: http.StatusCreated,
@@ -82,13 +80,13 @@ func TestHandler_ShortenBatch(t *testing.T) {
 			contentType: "application/json",
 			mockSetup: func(ms *MockStorage, msh *MockShortener) {
 				// Первый URL (существующий)
-				ms.On("FindByOriginalURL", "https://example1.com").Return("existing123", true)
+				msh.On("Shorten", "https://example1.com").Return("existing123")
+				ms.On("Add", "existing123", "https://example1.com").Return("existing123", true, nil)
 				msh.On("BuildShortURL", "existing123").Return("http://short.url/existing123")
 
 				// Второй URL (новый)
-				ms.On("FindByOriginalURL", "https://example2.com").Return("", false)
 				msh.On("Shorten", "https://example2.com").Return("def456")
-				ms.On("Add", "def456", "https://example2.com").Return("def456", false)
+				ms.On("Add", "def456", "https://example2.com").Return("def456", false, nil)
 				msh.On("BuildShortURL", "def456").Return("http://short.url/def456")
 			},
 			expectedStatus: http.StatusCreated,

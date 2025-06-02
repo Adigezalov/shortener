@@ -6,9 +6,10 @@ import (
 
 // URLStorage интерфейс для хранения URL
 type URLStorage interface {
-	Add(id string, url string) (string, bool)
+	Add(id string, url string) (string, bool, error)
 	Get(id string) (string, bool)
 	FindByOriginalURL(url string) (string, bool)
+	Close() error
 }
 
 // URLShortener интерфейс для сокращения URL
