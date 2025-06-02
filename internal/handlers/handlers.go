@@ -1,6 +1,8 @@
 package handlers
 
-import "github.com/Adigezalov/shortener/internal/database"
+import (
+	"github.com/Adigezalov/shortener/internal/database"
+)
 
 // URLStorage интерфейс для хранения URL
 type URLStorage interface {
@@ -23,7 +25,7 @@ type Handler struct {
 }
 
 // New создает новый обработчик HTTP запросов
-func New(storage URLStorage, shortener URLShortener, db *database.DB) *Handler {
+func New(storage URLStorage, shortener URLShortener, db database.DBInterface) *Handler {
 	return &Handler{
 		storage:   storage,
 		shortener: shortener,

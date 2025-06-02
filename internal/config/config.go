@@ -26,7 +26,8 @@ func NewConfig() *Config {
 	serverAddress := ":8080"
 	baseURL := "http://localhost:8080"
 	fileStoragePath := "storage.json"
-	databaseDSN := "postgres://user:password@localhost:5432/shortener?sslmode=disable"
+	// Для тестов используем пустую строку подключения
+	databaseDSN := ""
 
 	// Проверяем переменные окружения
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {

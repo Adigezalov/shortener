@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -47,10 +46,8 @@ func TestHandler_PingDB(t *testing.T) {
 
 			// Создаем обработчик с моком
 			h := &Handler{
-				db: &database.DB{},
+				db: mockDB,
 			}
-			// Подменяем реальную БД на мок
-			h.db = mockDB
 
 			// Создаем тестовый запрос
 			req := httptest.NewRequest(http.MethodGet, "/ping", nil)

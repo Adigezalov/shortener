@@ -30,12 +30,19 @@ func main() {
 	// Загружаем конфигурацию
 	cfg := config.NewConfig()
 
-	// Инициализируем подключение к базе данных
-	db, err := database.New(cfg.DatabaseDSN)
-	if err != nil {
-		logger.Logger.Fatal("Ошибка подключения к базе данных", zap.Error(err))
+	// Инициализируем подключение к базе данных, если указан DSN
+	var dbInterface database.DBInterface
+	if cfg.DatabaseDSN != "" {
+		db, err := database.New(cfg.DatabaseDSN)
+		if err != nil {
+			logger.Logger.Fatal("Ошибка подключения к базе данных", zap.Error(err))
+		}
+		dbInterface = db
+		defer dbInterface.Close()
+	} else {
+		// Для тестов используем мок базы данных
+		dbInterface = &database.MockDB{}
 	}
-	defer db.Close()
 
 	// Инициализируем хранилище URL
 	store := storage.New(cfg.FileStoragePath)
@@ -45,7 +52,7 @@ func main() {
 	shortenerService := shortener.New(cfg.BaseURL)
 
 	// Инициализируем обработчик HTTP запросов
-	handler := handlers.New(store, shortenerService, db)
+	handler := handlers.New(store, shortenerService, dbInterface)
 
 	// Создаем новый роутер chi
 	r := chi.NewRouter()

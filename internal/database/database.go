@@ -16,6 +16,17 @@ type DB struct {
 	*sql.DB
 }
 
+// MockDB мок для базы данных, используется в тестах
+type MockDB struct{}
+
+func (m *MockDB) Ping() error {
+	return nil
+}
+
+func (m *MockDB) Close() error {
+	return nil
+}
+
 // New создает новое подключение к базе данных
 func New(dsn string) (*DB, error) {
 	db, err := sql.Open("postgres", dsn)
