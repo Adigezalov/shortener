@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/Adigezalov/shortener/internal/config"
+	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/handlers"
 	"github.com/Adigezalov/shortener/internal/logger"
 	customMiddleware "github.com/Adigezalov/shortener/internal/middleware"
@@ -29,32 +30,40 @@ func main() {
 	// Загружаем конфигурацию
 	cfg := config.NewConfig()
 
+	// Инициализируем подключение к базе данных
+	db, err := database.New(cfg.DatabaseDSN)
+	if err != nil {
+		logger.Logger.Fatal("Ошибка подключения к базе данных", zap.Error(err))
+	}
+	defer db.Close()
+
 	// Инициализируем хранилище URL
 	store := storage.New(cfg.FileStoragePath)
-	defer store.Close() // Закрываем хранилище при завершении
+	defer store.Close()
 
-	// Инициализируем сервис сокращения URL с базовым URL из конфигурации
+	// Инициализируем сервис сокращения URL
 	shortenerService := shortener.New(cfg.BaseURL)
 
 	// Инициализируем обработчик HTTP запросов
-	handler := handlers.New(store, shortenerService)
+	handler := handlers.New(store, shortenerService, db)
 
 	// Создаем новый роутер chi
 	r := chi.NewRouter()
 
 	// Добавляем глобальные middleware
-	r.Use(middleware.CleanPath)              // Очистка пути URL
-	r.Use(customMiddleware.LoggingRecoverer) // Восстановление после паники с логированием
-	r.Use(customMiddleware.WithRequestID)    // Добавление ID запроса
-	r.Use(customMiddleware.RequestLogger)    // Логирование запросов и ответов
-	r.Use(customMiddleware.GzipMiddleware)   // Обработка gzip сжатия
+	r.Use(middleware.CleanPath)
+	r.Use(customMiddleware.LoggingRecoverer)
+	r.Use(customMiddleware.WithRequestID)
+	r.Use(customMiddleware.RequestLogger)
+	r.Use(customMiddleware.GzipMiddleware)
 
-	// Определяем маршруты с соответствующими middleware
+	// Определяем маршруты
+	r.Get("/ping", handler.PingDB)
 	r.With(customMiddleware.TextPlainContentTypeMiddleware()).Post("/", handler.CreateShortURL)
 	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten", handler.ShortenURL)
 	r.Get("/{id}", handler.RedirectToURL)
 
-	// Настраиваем корректное завершение сервера
+	// Настраиваем HTTP-сервер
 	srv := &http.Server{
 		Addr:    cfg.ServerAddress,
 		Handler: r,
@@ -70,6 +79,7 @@ func main() {
 			zap.String("address", cfg.ServerAddress),
 			zap.String("base_url", cfg.BaseURL),
 			zap.String("storage_path", cfg.FileStoragePath),
+			zap.String("database_dsn", cfg.DatabaseDSN),
 		)
 
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -80,7 +90,7 @@ func main() {
 	// Ожидаем сигнал завершения
 	<-stop
 
-	logger.Logger.Info("Завершение работы сервера, сохранение данных...")
+	logger.Logger.Info("Завершение работы сервера...")
 
 	// Создаем контекст с таймаутом для корректного завершения
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
