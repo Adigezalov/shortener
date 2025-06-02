@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/Adigezalov/shortener/internal/models"
 	"go.uber.org/zap"
@@ -32,17 +33,29 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Создаем или получаем существующий короткий ID
-	var id string
-	var exists bool
+	// Генерируем новый ID и пытаемся добавить URL
+	id := h.shortener.Shorten(request.URL)
+	id, exists, err := h.storage.Add(id, request.URL)
 
-	// Сначала проверяем, есть ли такой URL в хранилище
-	id, exists = h.storage.FindByOriginalURL(request.URL)
-	if !exists {
-		// Если URL не найден, генерируем новый ID
-		id = h.shortener.Shorten(request.URL)
-		// Добавляем URL в хранилище
-		id, _ = h.storage.Add(id, request.URL)
+	if err != nil {
+		if err == database.ErrURLConflict {
+			// Если URL уже существует, возвращаем короткий URL с кодом конфликта
+			shortURL := h.shortener.BuildShortURL(id)
+			response := models.ShortenResponse{
+				Result: shortURL,
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			encoder := json.NewEncoder(w)
+			if err := encoder.Encode(response); err != nil {
+				logger.Logger.Error("Ошибка кодирования JSON", zap.Error(err))
+				http.Error(w, "Ошибка формирования ответа", http.StatusInternalServerError)
+			}
+			return
+		}
+		logger.Logger.Error("Ошибка добавления URL", zap.Error(err))
+		http.Error(w, "Ошибка сохранения URL", http.StatusInternalServerError)
+		return
 	}
 
 	// Строим полный короткий URL
