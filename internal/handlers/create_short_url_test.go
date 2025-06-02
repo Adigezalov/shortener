@@ -63,7 +63,7 @@ func TestHandler_CreateShortURL(t *testing.T) {
 		expectedBody   string
 	}{
 		{
-			name:     "Успешное создание нового короткого URL",
+			name:     "Успешное_создание_нового_короткого_URL",
 			inputURL: "https://example.com",
 			mockSetup: func(ms *MockStorage, msh *MockShortener) {
 				ms.On("FindByOriginalURL", "https://example.com").Return("", false)
@@ -75,7 +75,7 @@ func TestHandler_CreateShortURL(t *testing.T) {
 			expectedBody:   "http://short.url/abc123",
 		},
 		{
-			name:     "URL уже существует в базе",
+			name:     "URL_уже_существует_в_базе",
 			inputURL: "https://example.com",
 			mockSetup: func(ms *MockStorage, msh *MockShortener) {
 				ms.On("FindByOriginalURL", "https://example.com").Return("existing123", true)
@@ -85,7 +85,7 @@ func TestHandler_CreateShortURL(t *testing.T) {
 			expectedBody:   "http://short.url/existing123",
 		},
 		{
-			name:           "Пустой URL",
+			name:           "Пустой_URL",
 			inputURL:       "",
 			mockSetup:      func(ms *MockStorage, msh *MockShortener) {},
 			expectedStatus: http.StatusBadRequest,
