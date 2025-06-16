@@ -15,55 +15,15 @@ var schemaFS embed.FS
 // ErrURLConflict ошибка при попытке добавить существующий URL
 var ErrURLConflict = errors.New("url already exists")
 
-// DBInterface описывает интерфейс для работы с базой данных
-type DBInterface interface {
-	Ping() error
-	Close() error
-	AddURL(shortID, originalURL string) (string, bool, error)
-	GetURL(shortID string) (string, bool, error)
-	FindByOriginalURL(originalURL string) (string, bool, error)
-}
-
 // DB представляет обертку над sql.DB с дополнительной функциональностью
 type DB struct {
 	*sql.DB
-}
-
-// MockDB мок для базы данных, используется в тестах
-type MockDB struct{}
-
-func (m *MockDB) Ping() error {
-	return nil
-}
-
-func (m *MockDB) Close() error {
-	return nil
-}
-
-func (m *MockDB) AddURL(shortID, originalURL string) (string, bool, error) {
-	// Для тестов всегда возвращаем успешное добавление
-	return shortID, false, nil
-}
-
-func (m *MockDB) GetURL(shortID string) (string, bool, error) {
-	// Для тестов возвращаем фиктивный URL
-	return "https://example.com", true, nil
-}
-
-func (m *MockDB) FindByOriginalURL(originalURL string) (string, bool, error) {
-	// Для тестов возвращаем фиктивный ID
-	return "abc123", true, nil
 }
 
 // New создает новое подключение к базе данных и инициализирует схему
 func New(dsn string) (*DB, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		return nil, err
-	}
-
-	// Проверяем подключение
-	if err = db.Ping(); err != nil {
 		return nil, err
 	}
 
@@ -89,18 +49,31 @@ func (db *DB) initSchema() error {
 	// Разделяем на отдельные команды
 	commands := strings.Split(string(schemaSQL), ";")
 
-	// Выполняем каждую команду
+	// Начинаем транзакцию
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	// Отложенный откат транзакции в случае ошибки
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Выполняем каждую команду в транзакции
 	for _, command := range commands {
 		command = strings.TrimSpace(command)
 		if command == "" {
 			continue
 		}
-		if _, err := db.Exec(command); err != nil {
+		if _, err := tx.Exec(command); err != nil {
 			return err
 		}
 	}
 
-	return nil
+	// Подтверждаем транзакцию
+	return tx.Commit()
 }
 
 // AddURL добавляет новый URL в базу данных
@@ -142,7 +115,7 @@ func (db *DB) GetURL(shortID string) (string, bool, error) {
 		WHERE short_id = $1`,
 		shortID).Scan(&originalURL)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil
 	}
 	if err != nil {
@@ -161,7 +134,7 @@ func (db *DB) FindByOriginalURL(originalURL string) (string, bool, error) {
 		WHERE original_url = $1`,
 		originalURL).Scan(&shortID)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil
 	}
 	if err != nil {

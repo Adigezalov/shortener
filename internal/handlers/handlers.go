@@ -1,9 +1,5 @@
 package handlers
 
-import (
-	"github.com/Adigezalov/shortener/internal/database"
-)
-
 // URLStorage интерфейс для хранения URL
 type URLStorage interface {
 	Add(id string, url string) (string, bool, error)
@@ -18,15 +14,20 @@ type URLShortener interface {
 	BuildShortURL(id string) string
 }
 
+// Pinger интерфейс для проверки подключения к базе данных
+type Pinger interface {
+	Ping() error
+}
+
 // Handler обработчик HTTP запросов
 type Handler struct {
 	storage   URLStorage
 	shortener URLShortener
-	db        database.DBInterface
+	db        Pinger
 }
 
 // New создает новый обработчик HTTP запросов
-func New(storage URLStorage, shortener URLShortener, db database.DBInterface) *Handler {
+func New(storage URLStorage, shortener URLShortener, db Pinger) *Handler {
 	return &Handler{
 		storage:   storage,
 		shortener: shortener,

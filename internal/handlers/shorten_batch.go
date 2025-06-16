@@ -12,13 +12,6 @@ import (
 
 // ShortenBatch обрабатывает POST запрос на пакетное создание сокращенных URL
 func (h *Handler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
-	// Проверяем заголовок Content-Type
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
-		http.Error(w, "Неподдерживаемый тип контента", http.StatusUnsupportedMediaType)
-		return
-	}
-
 	// Читаем запрос
 	var request []models.BatchShortenRequest
 	decoder := json.NewDecoder(r.Body)

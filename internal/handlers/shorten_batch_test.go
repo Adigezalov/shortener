@@ -30,7 +30,7 @@ func TestHandler_ShortenBatch(t *testing.T) {
 		expectedResult []models.BatchShortenResponse
 	}{
 		{
-			name: "Успешное создание нескольких коротких URL",
+			name: "Успешное_создание_нескольких_коротких_URL",
 			request: []models.BatchShortenRequest{
 				{
 					CorrelationID: "1",
@@ -66,7 +66,7 @@ func TestHandler_ShortenBatch(t *testing.T) {
 			},
 		},
 		{
-			name: "Один URL уже существует",
+			name: "Один_URL_уже_существует",
 			request: []models.BatchShortenRequest{
 				{
 					CorrelationID: "1",
@@ -102,24 +102,11 @@ func TestHandler_ShortenBatch(t *testing.T) {
 			},
 		},
 		{
-			name:           "Пустой список URL",
+			name:           "Пустой_список_URL",
 			request:        []models.BatchShortenRequest{},
 			contentType:    "application/json",
 			mockSetup:      func(ms *MockStorage, msh *MockShortener) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedResult: nil,
-		},
-		{
-			name: "Неверный Content-Type",
-			request: []models.BatchShortenRequest{
-				{
-					CorrelationID: "1",
-					OriginalURL:   "https://example.com",
-				},
-			},
-			contentType:    "text/plain",
-			mockSetup:      func(ms *MockStorage, msh *MockShortener) {},
-			expectedStatus: http.StatusUnsupportedMediaType,
 			expectedResult: nil,
 		},
 	}

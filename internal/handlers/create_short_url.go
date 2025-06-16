@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/logger"
 	"go.uber.org/zap"
@@ -29,7 +30,7 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	id, exists, err := h.storage.Add(id, originalURL)
 
 	if err != nil {
-		if err == database.ErrURLConflict {
+		if errors.Is(err, database.ErrURLConflict) {
 			// Если URL уже существует, возвращаем короткий URL с кодом конфликта
 			shortURL := h.shortener.BuildShortURL(id)
 			w.Header().Set("Content-Type", "text/plain")

@@ -11,6 +11,7 @@ import (
 	"github.com/Adigezalov/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 	"log"
 	"net/http"
@@ -38,17 +39,17 @@ func main() {
 	defer store.Close()
 
 	// Инициализируем подключение к базе данных для хендлера /ping
-	var dbInterface database.DBInterface
+	var dbInterface handlers.Pinger
 	if cfg.DatabaseDSN != "" {
 		db, err := database.New(cfg.DatabaseDSN)
 		if err != nil {
 			logger.Logger.Fatal("Ошибка подключения к базе данных", zap.Error(err))
 		}
 		dbInterface = db
-		defer dbInterface.Close()
+		defer db.Close()
 	} else {
-		// Для тестов используем мок базы данных
-		dbInterface = &database.MockDB{}
+		// Если база данных не настроена, передаем nil
+		dbInterface = nil
 	}
 
 	// Инициализируем сервис сокращения URL

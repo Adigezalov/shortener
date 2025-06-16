@@ -6,6 +6,14 @@ import (
 	"strings"
 )
 
+// Константы для значений по умолчанию
+const (
+	DefaultServerAddress = ":8080"
+	DefaultBaseURL       = "http://localhost:8080"
+	DefaultFileStorage   = "storage.json"
+	DefaultDatabaseDSN   = ""
+)
+
 // Config содержит конфигурационные параметры приложения
 type Config struct {
 	// ServerAddress адрес запуска HTTP-сервера
@@ -23,10 +31,10 @@ func NewConfig() *Config {
 	cfg := &Config{}
 
 	// Устанавливаем значения по умолчанию
-	serverAddress := ":8080"
-	baseURL := "http://localhost:8080"
-	fileStoragePath := "storage.json"
-	databaseDSN := ""
+	serverAddress := DefaultServerAddress
+	baseURL := DefaultBaseURL
+	fileStoragePath := DefaultFileStorage
+	databaseDSN := DefaultDatabaseDSN
 
 	// Проверяем переменные окружения
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {

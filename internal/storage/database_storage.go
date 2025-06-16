@@ -35,11 +35,13 @@ func (s *DatabaseStorage) Add(id string, url string) (string, bool, error) {
 	if err != nil {
 		// Проверяем, является ли ошибка нарушением уникальности
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == pgerrcode.UniqueViolation {
-			// Если произошел конфликт, возвращаем существующий ID
+			// Если произошел конфликт, проверяем по какому полю
 			existingID, exists := s.FindByOriginalURL(url)
 			if exists {
+				// Конфликт по original_url - возвращаем существующий ID
 				return existingID, true, nil
 			}
+			// Конфликт по short_id - возвращаем ошибку конфликта
 			return "", false, database.ErrURLConflict
 		}
 		return "", false, err

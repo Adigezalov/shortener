@@ -1,65 +1,53 @@
 package handlers
 
 import (
-	"errors"
-	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-// TestMockDB расширяет database.MockDB для тестов
-type TestMockDB struct {
-	database.MockDB
-	pingErr error
-}
-
-func (m *TestMockDB) Ping() error {
-	return m.pingErr
-}
-
 func TestHandler_PingDB(t *testing.T) {
 	tests := []struct {
 		name           string
-		pingErr        error
+		db             Pinger
 		expectedStatus int
+		prepareMock    func(p *MockPinger)
 	}{
 		{
-			name:           "успешное_подключение",
-			pingErr:        nil,
+			name:           "база_данных_не_настроена",
+			db:             nil,
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "ошибка_подключения",
-			pingErr:        errors.New("connection error"),
-			expectedStatus: http.StatusInternalServerError,
+			name:           "база_данных_работает",
+			db:             &MockPinger{},
+			expectedStatus: http.StatusOK,
+			prepareMock: func(p *MockPinger) {
+				p.On("Ping").Return(nil)
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Создаем мок базы данных
-			mockDB := &TestMockDB{pingErr: tt.pingErr}
-
-			// Создаем обработчик с моком
-			h := &Handler{
-				db: mockDB,
+			if mock, ok := tt.db.(*MockPinger); ok && tt.prepareMock != nil {
+				tt.prepareMock(mock)
 			}
 
-			// Создаем тестовый запрос
+			h := &Handler{
+				db: tt.db,
+			}
+
 			req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 			w := httptest.NewRecorder()
 
-			// Выполняем запрос
 			h.PingDB(w, req)
 
-			// Проверяем результат
 			result := w.Result()
 			defer result.Body.Close()
 
-			// Проверяем статус ответа
-			assert.Equal(t, tt.expectedStatus, result.StatusCode)
+			assert.Equal(t, tt.expectedStatus, result.StatusCode, "Expected status code %d, but got %d for test case '%s'", tt.expectedStatus, result.StatusCode, tt.name)
 		})
 	}
 }

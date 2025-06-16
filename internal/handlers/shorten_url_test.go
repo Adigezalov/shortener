@@ -31,7 +31,7 @@ func TestHandler_ShortenURL(t *testing.T) {
 		expectedResult string
 	}{
 		{
-			name: "Успешное создание нового короткого URL",
+			name: "Успешное_создание_нового_короткого_URL",
 			request: models.ShortenRequest{
 				URL: "https://example.com",
 			},
@@ -45,7 +45,7 @@ func TestHandler_ShortenURL(t *testing.T) {
 			expectedResult: "http://short.url/abc123",
 		},
 		{
-			name: "URL уже существует в базе",
+			name: "URL_уже_существует_в_базе",
 			request: models.ShortenRequest{
 				URL: "https://example.com",
 			},
@@ -59,7 +59,7 @@ func TestHandler_ShortenURL(t *testing.T) {
 			expectedResult: "http://short.url/abc123",
 		},
 		{
-			name: "Пустой URL",
+			name: "Пустой_URL",
 			request: models.ShortenRequest{
 				URL: "",
 			},
@@ -69,7 +69,7 @@ func TestHandler_ShortenURL(t *testing.T) {
 			expectedResult: "",
 		},
 		{
-			name: "Неверный Content-Type",
+			name: "Неверный_Content-Type",
 			request: models.ShortenRequest{
 				URL: "https://example.com",
 			},
