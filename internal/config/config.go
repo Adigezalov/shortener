@@ -6,6 +6,14 @@ import (
 	"strings"
 )
 
+// Константы для значений по умолчанию
+const (
+	DefaultServerAddress = ":8080"
+	DefaultBaseURL       = "http://localhost:8080"
+	DefaultFileStorage   = "storage.json"
+	DefaultDatabaseDSN   = ""
+)
+
 // Config содержит конфигурационные параметры приложения
 type Config struct {
 	// ServerAddress адрес запуска HTTP-сервера
@@ -14,6 +22,8 @@ type Config struct {
 	BaseURL string
 	// FileStoragePath путь к файлу хранения
 	FileStoragePath string
+	// DatabaseDSN строка подключения к PostgreSQL
+	DatabaseDSN string
 }
 
 // NewConfig создает и инициализирует конфигурацию из аргументов командной строки и переменных окружения
@@ -21,9 +31,10 @@ func NewConfig() *Config {
 	cfg := &Config{}
 
 	// Устанавливаем значения по умолчанию
-	serverAddress := "localhost:8080"
-	baseURL := "http://localhost:8080"
-	fileStoragePath := "./storage.json"
+	serverAddress := DefaultServerAddress
+	baseURL := DefaultBaseURL
+	fileStoragePath := DefaultFileStorage
+	databaseDSN := DefaultDatabaseDSN
 
 	// Проверяем переменные окружения
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
@@ -32,15 +43,18 @@ func NewConfig() *Config {
 	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
 		baseURL = envBaseURL
 	}
-
 	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
 		fileStoragePath = envFileStoragePath
+	}
+	if envDatabaseDSN := os.Getenv("DATABASE_DSN"); envDatabaseDSN != "" {
+		databaseDSN = envDatabaseDSN
 	}
 
 	// Регистрируем флаги командной строки
 	flag.StringVar(&cfg.ServerAddress, "a", serverAddress, "адрес запуска HTTP-сервера")
 	flag.StringVar(&cfg.BaseURL, "b", baseURL, "базовый адрес для сокращенных URL")
 	flag.StringVar(&cfg.FileStoragePath, "f", fileStoragePath, "путь к файлу хранения URL")
+	flag.StringVar(&cfg.DatabaseDSN, "d", databaseDSN, "строка подключения к PostgreSQL")
 
 	// Разбираем флаги
 	flag.Parse()
