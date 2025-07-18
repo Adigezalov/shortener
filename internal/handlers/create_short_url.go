@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/logger"
+	"github.com/Adigezalov/shortener/internal/middleware"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
@@ -25,9 +26,17 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Генерируем новый ID и пытаемся добавить URL
+	// Получаем ID пользователя из контекста
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		logger.Logger.Error("Не удалось получить ID пользователя из контекста")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Генерируем новый ID и пытаемся добавить URL с привязкой к пользователю
 	id := h.shortener.Shorten(originalURL)
-	id, exists, err := h.storage.Add(id, originalURL)
+	id, exists, err := h.storage.AddWithUser(id, originalURL, userID)
 
 	if err != nil {
 		if errors.Is(err, database.ErrURLConflict) {

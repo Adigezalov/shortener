@@ -67,6 +67,7 @@ func main() {
 	r.Use(customMiddleware.WithRequestID)
 	r.Use(customMiddleware.RequestLogger)
 	r.Use(customMiddleware.GzipMiddleware)
+	r.Use(customMiddleware.AuthMiddleware) // Добавляем middleware аутентификации
 
 	// Определяем маршруты
 	r.Get("/ping", handler.PingDB)
@@ -74,6 +75,12 @@ func main() {
 	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten", handler.ShortenURL)
 	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten/batch", handler.ShortenBatch)
 	r.Get("/{id}", handler.RedirectToURL)
+	
+	// Маршруты, требующие аутентификации
+	r.Route("/api/user", func(r chi.Router) {
+		r.Use(customMiddleware.RequireAuth)
+		r.Get("/urls", handler.GetUserURLs)
+	})
 
 	// Настраиваем HTTP-сервер
 	srv := &http.Server{

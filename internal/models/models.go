@@ -28,3 +28,9 @@ type URLRecord struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+// UserURL представляет URL пользователя
+type UserURL struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}

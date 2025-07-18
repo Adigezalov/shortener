@@ -8,12 +8,15 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+
+	"github.com/Adigezalov/shortener/internal/models"
 )
 
 // FileStorage реализует хранилище URL в файле
 type FileStorage struct {
-	urls       map[string]string // id -> original_url
-	urlToID    map[string]string // original_url -> id
+	urls       map[string]string   // id -> original_url
+	urlToID    map[string]string   // original_url -> id
+	userURLs   map[string][]string // userID -> []shortURL
 	mu         sync.RWMutex
 	filePath   string
 	fileLock   *os.File
@@ -30,6 +33,7 @@ func NewFileStorage(filePath string) *FileStorage {
 	s := &FileStorage{
 		urls:       make(map[string]string),
 		urlToID:    make(map[string]string),
+		userURLs:   make(map[string][]string),
 		filePath:   filePath,
 		flushQueue: make(chan record, 100),
 	}
@@ -51,13 +55,13 @@ func NewFileStorage(filePath string) *FileStorage {
 }
 
 // Add добавляет новый URL в хранилище
-func (s *FileStorage) Add(id string, url string) (string, bool) {
+func (s *FileStorage) Add(id string, url string) (string, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	// Проверяем, есть ли уже такой URL
 	if existingID, found := s.urlToID[url]; found {
-		return existingID, true
+		return existingID, true, nil
 	}
 
 	// Добавляем новый URL
@@ -70,7 +74,33 @@ func (s *FileStorage) Add(id string, url string) (string, bool) {
 		OriginalURL: url,
 	}
 
-	return id, false
+	return id, false, nil
+}
+
+// AddWithUser добавляет новый URL в хранилище с привязкой к пользователю
+func (s *FileStorage) AddWithUser(id string, url string, userID string) (string, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Проверяем, есть ли уже такой URL
+	if existingID, found := s.urlToID[url]; found {
+		return existingID, true, nil
+	}
+
+	// Добавляем новый URL
+	s.urls[id] = url
+	s.urlToID[url] = id
+
+	// Добавляем URL к пользователю
+	s.userURLs[userID] = append(s.userURLs[userID], id)
+
+	// Отправляем на запись в файл
+	s.flushQueue <- record{
+		ShortID:     id,
+		OriginalURL: url,
+	}
+
+	return id, false, nil
 }
 
 // Get возвращает оригинальный URL по идентификатору
@@ -89,6 +119,29 @@ func (s *FileStorage) FindByOriginalURL(url string) (string, bool) {
 
 	id, ok := s.urlToID[url]
 	return id, ok
+}
+
+// GetUserURLs возвращает все URL пользователя
+func (s *FileStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	shortURLs, exists := s.userURLs[userID]
+	if !exists || len(shortURLs) == 0 {
+		return []models.UserURL{}, nil
+	}
+
+	result := make([]models.UserURL, 0, len(shortURLs))
+	for _, shortURL := range shortURLs {
+		if originalURL, exists := s.urls[shortURL]; exists {
+			result = append(result, models.UserURL{
+				ShortURL:    shortURL,
+				OriginalURL: originalURL,
+			})
+		}
+	}
+
+	return result, nil
 }
 
 // Close закрывает хранилище и освобождает ресурсы
