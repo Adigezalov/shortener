@@ -16,10 +16,11 @@ import (
 
 // MemoryStorage реализует хранилище URL с опциональным сохранением в файл
 type MemoryStorage struct {
-	urls    map[string]string // id -> original_url
-	urlToID map[string]string // original_url -> id (обратный индекс)
-	mu      sync.RWMutex      // мьютекс для защиты данных
-	nextID  int               // счетчик ID для новых записей
+	urls     map[string]string   // id -> original_url
+	urlToID  map[string]string   // original_url -> id (обратный индекс)
+	userURLs map[string][]string // userID -> []shortURL (URL пользователя)
+	mu       sync.RWMutex        // мьютекс для защиты данных
+	nextID   int                 // счетчик ID для новых записей
 
 	// Поля для работы с файлом (используются только если storagePath не пустой)
 	storagePath string                // путь к файлу хранения
@@ -38,6 +39,7 @@ func NewMemoryStorage(storagePath string) *MemoryStorage {
 	storage := &MemoryStorage{
 		urls:        make(map[string]string),
 		urlToID:     make(map[string]string),
+		userURLs:    make(map[string][]string),
 		nextID:      1,
 		storagePath: storagePath,
 		fileMode:    storagePath != "",
@@ -115,6 +117,60 @@ func (s *MemoryStorage) FindByOriginalURL(url string) (string, bool) {
 
 	id, ok := s.urlToID[url]
 	return id, ok
+}
+
+// AddWithUser добавляет новый URL в хранилище с привязкой к пользователю
+func (s *MemoryStorage) AddWithUser(id string, url string, userID string) (string, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Проверяем, есть ли уже такой URL
+	if existingID, found := s.urlToID[url]; found {
+		return existingID, true, database.ErrURLConflict
+	}
+
+	// Добавляем новый URL
+	s.urls[id] = url
+	s.urlToID[url] = id
+
+	// Добавляем URL к пользователю
+	s.userURLs[userID] = append(s.userURLs[userID], id)
+
+	// Если включен режим файла, добавляем запись в очередь на сохранение
+	if s.fileMode {
+		uuid := fmt.Sprintf("%d", s.nextID)
+		s.flushQueue <- models.URLRecord{
+			UUID:        uuid,
+			ShortURL:    id,
+			OriginalURL: url,
+		}
+	}
+
+	s.nextID++
+	return id, false, nil
+}
+
+// GetUserURLs возвращает все URL пользователя
+func (s *MemoryStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	shortURLs, exists := s.userURLs[userID]
+	if !exists || len(shortURLs) == 0 {
+		return []models.UserURL{}, nil
+	}
+
+	result := make([]models.UserURL, 0, len(shortURLs))
+	for _, shortURL := range shortURLs {
+		if originalURL, exists := s.urls[shortURL]; exists {
+			result = append(result, models.UserURL{
+				ShortURL:    shortURL,
+				OriginalURL: originalURL,
+			})
+		}
+	}
+
+	return result, nil
 }
 
 // acquireLock блокирует файл хранения

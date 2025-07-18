@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/Adigezalov/shortener/internal/logger"
+	"github.com/Adigezalov/shortener/internal/middleware"
 	"github.com/Adigezalov/shortener/internal/models"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -25,7 +27,7 @@ func TestHandler_ShortenBatch(t *testing.T) {
 		name           string
 		request        []models.BatchShortenRequest
 		contentType    string
-		mockSetup      func(*MockStorage, *MockShortener)
+		mockSetup      func(*MockURLStorage, *MockURLShortener)
 		expectedStatus int
 		expectedResult []models.BatchShortenResponse
 	}{
@@ -42,15 +44,15 @@ func TestHandler_ShortenBatch(t *testing.T) {
 				},
 			},
 			contentType: "application/json",
-			mockSetup: func(ms *MockStorage, msh *MockShortener) {
+			mockSetup: func(ms *MockURLStorage, msh *MockURLShortener) {
 				// Первый URL
 				msh.On("Shorten", "https://example1.com").Return("abc123")
-				ms.On("Add", "abc123", "https://example1.com").Return("abc123", false, nil)
+				ms.On("AddWithUser", "abc123", "https://example1.com", "test-user").Return("abc123", false, nil)
 				msh.On("BuildShortURL", "abc123").Return("http://short.url/abc123")
 
 				// Второй URL
 				msh.On("Shorten", "https://example2.com").Return("def456")
-				ms.On("Add", "def456", "https://example2.com").Return("def456", false, nil)
+				ms.On("AddWithUser", "def456", "https://example2.com", "test-user").Return("def456", false, nil)
 				msh.On("BuildShortURL", "def456").Return("http://short.url/def456")
 			},
 			expectedStatus: http.StatusCreated,
@@ -78,15 +80,15 @@ func TestHandler_ShortenBatch(t *testing.T) {
 				},
 			},
 			contentType: "application/json",
-			mockSetup: func(ms *MockStorage, msh *MockShortener) {
+			mockSetup: func(ms *MockURLStorage, msh *MockURLShortener) {
 				// Первый URL (существующий)
 				msh.On("Shorten", "https://example1.com").Return("existing123")
-				ms.On("Add", "existing123", "https://example1.com").Return("existing123", true, nil)
+				ms.On("AddWithUser", "existing123", "https://example1.com", "test-user").Return("existing123", true, nil)
 				msh.On("BuildShortURL", "existing123").Return("http://short.url/existing123")
 
 				// Второй URL (новый)
 				msh.On("Shorten", "https://example2.com").Return("def456")
-				ms.On("Add", "def456", "https://example2.com").Return("def456", false, nil)
+				ms.On("AddWithUser", "def456", "https://example2.com", "test-user").Return("def456", false, nil)
 				msh.On("BuildShortURL", "def456").Return("http://short.url/def456")
 			},
 			expectedStatus: http.StatusCreated,
@@ -105,7 +107,7 @@ func TestHandler_ShortenBatch(t *testing.T) {
 			name:           "Пустой_список_URL",
 			request:        []models.BatchShortenRequest{},
 			contentType:    "application/json",
-			mockSetup:      func(ms *MockStorage, msh *MockShortener) {},
+			mockSetup:      func(ms *MockURLStorage, msh *MockURLShortener) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedResult: nil,
 		},
@@ -114,8 +116,8 @@ func TestHandler_ShortenBatch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Создаем моки
-			mockStorage := new(MockStorage)
-			mockShortener := new(MockShortener)
+			mockStorage := new(MockURLStorage)
+			mockShortener := new(MockURLShortener)
 
 			// Настраиваем моки
 			tt.mockSetup(mockStorage, mockShortener)
@@ -132,6 +134,13 @@ func TestHandler_ShortenBatch(t *testing.T) {
 			// Создаем тестовый запрос
 			req := httptest.NewRequest("POST", "/api/shorten/batch", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", tt.contentType)
+			
+			// Добавляем userID в контекст для тестов, которые требуют аутентификации
+			if tt.expectedStatus == http.StatusCreated {
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
+				req = req.WithContext(ctx)
+			}
+			
 			w := httptest.NewRecorder()
 
 			// Вызываем тестируемый обработчик

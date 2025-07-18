@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/logger"
+	"github.com/Adigezalov/shortener/internal/middleware"
 	"github.com/Adigezalov/shortener/internal/models"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -26,7 +28,7 @@ func TestHandler_ShortenURL(t *testing.T) {
 		name           string
 		request        models.ShortenRequest
 		contentType    string
-		mockSetup      func(*MockStorage, *MockShortener)
+		mockSetup      func(*MockURLStorage, *MockURLShortener)
 		expectedStatus int
 		expectedResult string
 	}{
@@ -36,9 +38,9 @@ func TestHandler_ShortenURL(t *testing.T) {
 				URL: "https://example.com",
 			},
 			contentType: "application/json",
-			mockSetup: func(ms *MockStorage, msh *MockShortener) {
+			mockSetup: func(ms *MockURLStorage, msh *MockURLShortener) {
 				msh.On("Shorten", "https://example.com").Return("abc123")
-				ms.On("Add", "abc123", "https://example.com").Return("abc123", false, nil)
+				ms.On("AddWithUser", "abc123", "https://example.com", "test-user").Return("abc123", false, nil)
 				msh.On("BuildShortURL", "abc123").Return("http://short.url/abc123")
 			},
 			expectedStatus: http.StatusCreated,
@@ -50,9 +52,9 @@ func TestHandler_ShortenURL(t *testing.T) {
 				URL: "https://example.com",
 			},
 			contentType: "application/json",
-			mockSetup: func(ms *MockStorage, msh *MockShortener) {
+			mockSetup: func(ms *MockURLStorage, msh *MockURLShortener) {
 				msh.On("Shorten", "https://example.com").Return("abc123")
-				ms.On("Add", "abc123", "https://example.com").Return("abc123", true, database.ErrURLConflict)
+				ms.On("AddWithUser", "abc123", "https://example.com", "test-user").Return("abc123", true, database.ErrURLConflict)
 				msh.On("BuildShortURL", "abc123").Return("http://short.url/abc123")
 			},
 			expectedStatus: http.StatusConflict,
@@ -64,7 +66,7 @@ func TestHandler_ShortenURL(t *testing.T) {
 				URL: "",
 			},
 			contentType:    "application/json",
-			mockSetup:      func(ms *MockStorage, msh *MockShortener) {},
+			mockSetup:      func(ms *MockURLStorage, msh *MockURLShortener) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedResult: "",
 		},
@@ -74,7 +76,7 @@ func TestHandler_ShortenURL(t *testing.T) {
 				URL: "https://example.com",
 			},
 			contentType:    "text/plain",
-			mockSetup:      func(ms *MockStorage, msh *MockShortener) {},
+			mockSetup:      func(ms *MockURLStorage, msh *MockURLShortener) {},
 			expectedStatus: http.StatusUnsupportedMediaType,
 			expectedResult: "",
 		},
@@ -83,8 +85,8 @@ func TestHandler_ShortenURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Создаем моки
-			mockStorage := new(MockStorage)
-			mockShortener := new(MockShortener)
+			mockStorage := new(MockURLStorage)
+			mockShortener := new(MockURLShortener)
 
 			// Настраиваем моки
 			tt.mockSetup(mockStorage, mockShortener)
@@ -101,6 +103,13 @@ func TestHandler_ShortenURL(t *testing.T) {
 			// Создаем тестовый запрос
 			req := httptest.NewRequest("POST", "/api/shorten", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", tt.contentType)
+			
+			// Добавляем userID в контекст для тестов, которые требуют аутентификации
+			if tt.expectedStatus == http.StatusCreated || tt.expectedStatus == http.StatusConflict {
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
+				req = req.WithContext(ctx)
+			}
+			
 			w := httptest.NewRecorder()
 
 			// Вызываем тестируемый обработчик

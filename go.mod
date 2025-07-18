@@ -4,6 +4,7 @@ go 1.24.2
 
 require (
 	github.com/go-chi/chi/v5 v5.2.1
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/lib/pq v1.10.9
 	github.com/stretchr/testify v1.8.1

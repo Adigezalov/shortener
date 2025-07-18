@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"github.com/Adigezalov/shortener/internal/database"
+	"github.com/Adigezalov/shortener/internal/models"
 	"github.com/jackc/pgerrcode"
 	"github.com/lib/pq"
 )
@@ -31,6 +32,37 @@ func (s *DatabaseStorage) Add(id string, url string) (string, bool, error) {
 		INSERT INTO urls (short_id, original_url)
 		VALUES ($1, $2)
 	`, id, url)
+
+	if err != nil {
+		// Проверяем, является ли ошибка нарушением уникальности
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == pgerrcode.UniqueViolation {
+			// Если произошел конфликт, проверяем по какому полю
+			existingID, exists := s.FindByOriginalURL(url)
+			if exists {
+				// Конфликт по original_url - возвращаем существующий ID
+				return existingID, true, nil
+			}
+			// Конфликт по short_id - возвращаем ошибку конфликта
+			return "", false, database.ErrURLConflict
+		}
+		return "", false, err
+	}
+
+	return id, false, nil
+}
+
+// AddWithUser добавляет новый URL в хранилище с привязкой к пользователю
+func (s *DatabaseStorage) AddWithUser(id string, url string, userID string) (string, bool, error) {
+	// Проверяем, существует ли уже такой URL
+	if existingID, exists := s.FindByOriginalURL(url); exists {
+		return existingID, true, database.ErrURLConflict
+	}
+
+	// Добавляем новый URL с привязкой к пользователю
+	_, err := s.db.Exec(`
+		INSERT INTO urls (short_id, original_url, user_id)
+		VALUES ($1, $2, $3)
+	`, id, url, userID)
 
 	if err != nil {
 		// Проверяем, является ли ошибка нарушением уникальности
@@ -88,6 +120,38 @@ func (s *DatabaseStorage) FindByOriginalURL(url string) (string, bool) {
 	}
 
 	return id, true
+}
+
+// GetUserURLs возвращает все URL пользователя
+func (s *DatabaseStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
+	rows, err := s.db.Query(`
+		SELECT short_id, original_url
+		FROM urls
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.UserURL
+	for rows.Next() {
+		var shortID, originalURL string
+		if err := rows.Scan(&shortID, &originalURL); err != nil {
+			return nil, err
+		}
+		result = append(result, models.UserURL{
+			ShortURL:    shortID,
+			OriginalURL: originalURL,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // Close закрывает соединение с базой данных
