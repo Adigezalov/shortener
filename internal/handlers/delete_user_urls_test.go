@@ -8,11 +8,21 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/Adigezalov/shortener/internal/middleware"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestHandler_DeleteUserURLs(t *testing.T) {
+	// Инициализируем тестовый логгер
+	testLogger, err := zap.NewDevelopment()
+	if err != nil {
+		t.Fatalf("Не удалось создать тестовый логгер: %v", err)
+	}
+	logger.Logger = testLogger
+	defer logger.Logger.Sync()
+
 	tests := []struct {
 		name           string
 		userID         string

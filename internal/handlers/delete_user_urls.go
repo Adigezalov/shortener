@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"sync"
 
 	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/Adigezalov/shortener/internal/middleware"
@@ -51,56 +50,16 @@ func (h *Handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 
 // asyncDeleteURLs асинхронно удаляет URL пользователя с использованием паттерна fanIn
 func (h *Handler) asyncDeleteURLs(userID string, shortURLs []string) {
-	// Создаем каналы для обработки URL
-	inputCh := make(chan string, len(shortURLs))
-
-	// Заполняем входной канал
-	for _, shortURL := range shortURLs {
-		inputCh <- shortURL
-	}
-	close(inputCh)
-
-	// Создаем несколько воркеров для обработки URL (паттерн fanOut)
-	const numWorkers = 3
-	var wg sync.WaitGroup
-
-	// Канал для сбора результатов (паттерн fanIn)
-	resultCh := make(chan string, len(shortURLs))
-
-	// Запускаем воркеров
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for shortURL := range inputCh {
-				// Обрабатываем каждый URL
-				resultCh <- shortURL
-			}
-		}()
-	}
-
-	// Ждем завершения всех воркеров
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
-
-	// Собираем все URL для пакетного удаления
-	var urlsToDelete []string
-	for shortURL := range resultCh {
-		urlsToDelete = append(urlsToDelete, shortURL)
-	}
-
 	// Выполняем пакетное удаление в хранилище
-	if err := h.storage.DeleteUserURLs(userID, urlsToDelete); err != nil {
+	if err := h.storage.DeleteUserURLs(userID, shortURLs); err != nil {
 		logger.Logger.Error("Ошибка удаления URL пользователя",
 			zap.String("user_id", userID),
-			zap.Strings("short_urls", urlsToDelete),
+			zap.Strings("short_urls", shortURLs),
 			zap.Error(err))
 		return
 	}
 
 	logger.Logger.Info("URL пользователя успешно помечены как удаленные",
 		zap.String("user_id", userID),
-		zap.Int("count", len(urlsToDelete)))
+		zap.Int("count", len(shortURLs)))
 }
