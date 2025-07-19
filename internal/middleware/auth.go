@@ -18,9 +18,10 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		userID, valid := auth.GetUserIDFromRequest(r)
 
 		if !valid {
-			// Генерируем новый ID пользователя и устанавливаем куку
+			// Генерируем новый ID пользователя и устанавливаем куку и заголовок
 			userID = auth.GenerateUserID()
 			auth.SetUserIDCookie(w, userID)
+			auth.SetAuthorizationHeader(w, userID)
 		}
 
 		// Добавляем userID в контекст запроса
@@ -53,6 +54,7 @@ func RequireAuth(next http.Handler) http.Handler {
 		if !valid {
 			userID = auth.GenerateUserID()
 			auth.SetUserIDCookie(w, userID)
+			auth.SetAuthorizationHeader(w, userID)
 			valid = true
 		}
 
