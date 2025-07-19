@@ -9,6 +9,8 @@ type URLStorage interface {
 	Get(id string) (string, bool)
 	FindByOriginalURL(url string) (string, bool)
 	GetUserURLs(userID string) ([]models.UserURL, error)
+	DeleteUserURLs(userID string, shortURLs []string) error
+	IsDeleted(shortURL string) (bool, error)
 	Close() error
 }
 

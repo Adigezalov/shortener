@@ -40,6 +40,16 @@ func (m *MockURLStorage) Close() error {
 	return args.Error(0)
 }
 
+func (m *MockURLStorage) DeleteUserURLs(userID string, shortURLs []string) error {
+	args := m.Called(userID, shortURLs)
+	return args.Error(0)
+}
+
+func (m *MockURLStorage) IsDeleted(shortURL string) (bool, error) {
+	args := m.Called(shortURL)
+	return args.Bool(0), args.Error(1)
+}
+
 // MockURLShortener - мок для интерфейса сокращения URL
 type MockURLShortener struct {
 	mock.Mock

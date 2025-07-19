@@ -21,6 +21,12 @@ type URLStorage interface {
 	// GetUserURLs возвращает все URL пользователя
 	GetUserURLs(userID string) ([]models.UserURL, error)
 
+	// DeleteUserURLs помечает URL как удаленные для указанного пользователя
+	DeleteUserURLs(userID string, shortURLs []string) error
+
+	// IsDeleted проверяет, помечен ли URL как удаленный
+	IsDeleted(shortURL string) (bool, error)
+
 	// Close закрывает хранилище и освобождает ресурсы
 	Close() error
 }

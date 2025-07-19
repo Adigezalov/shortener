@@ -30,15 +30,26 @@ func TestHandler_RedirectToURL(t *testing.T) {
 			name:  "Успешное_перенаправление",
 			urlID: "abc123",
 			mockSetup: func(ms *MockURLStorage) {
+				ms.On("IsDeleted", "abc123").Return(false, nil)
 				ms.On("Get", "abc123").Return("https://example.com", true)
 			},
 			expectedStatus: http.StatusTemporaryRedirect,
 			expectedURL:    "https://example.com",
 		},
 		{
+			name:  "URL_удален",
+			urlID: "deleted123",
+			mockSetup: func(ms *MockURLStorage) {
+				ms.On("IsDeleted", "deleted123").Return(true, nil)
+			},
+			expectedStatus: http.StatusGone,
+			expectedURL:    "",
+		},
+		{
 			name:  "URL_не_найден",
 			urlID: "notfound",
 			mockSetup: func(ms *MockURLStorage) {
+				ms.On("IsDeleted", "notfound").Return(false, nil)
 				ms.On("Get", "notfound").Return("", false)
 			},
 			expectedStatus: http.StatusNotFound,

@@ -85,17 +85,23 @@ func (s *DatabaseStorage) AddWithUser(id string, url string, userID string) (str
 // Get возвращает оригинальный URL по идентификатору
 func (s *DatabaseStorage) Get(id string) (string, bool) {
 	var url string
+	var isDeleted bool
 	err := s.db.QueryRow(`
-		SELECT original_url
+		SELECT original_url, COALESCE(is_deleted, false)
 		FROM urls
 		WHERE short_id = $1
-	`, id).Scan(&url)
+	`, id).Scan(&url, &isDeleted)
 
 	if err == sql.ErrNoRows {
 		return "", false
 	}
 
 	if err != nil {
+		return "", false
+	}
+
+	// Если URL помечен как удаленный, возвращаем false
+	if isDeleted {
 		return "", false
 	}
 
@@ -122,12 +128,12 @@ func (s *DatabaseStorage) FindByOriginalURL(url string) (string, bool) {
 	return id, true
 }
 
-// GetUserURLs возвращает все URL пользователя
+// GetUserURLs возвращает все URL пользователя (исключая удаленные)
 func (s *DatabaseStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
 	rows, err := s.db.Query(`
 		SELECT short_id, original_url
 		FROM urls
-		WHERE user_id = $1
+		WHERE user_id = $1 AND COALESCE(is_deleted, false) = false
 		ORDER BY created_at DESC
 	`, userID)
 	if err != nil {
@@ -152,6 +158,43 @@ func (s *DatabaseStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
 	}
 
 	return result, nil
+}
+
+// DeleteUserURLs помечает URL как удаленные для указанного пользователя
+func (s *DatabaseStorage) DeleteUserURLs(userID string, shortURLs []string) error {
+	if len(shortURLs) == 0 {
+		return nil
+	}
+
+	// Используем batch update для эффективного обновления множества записей
+	query := `
+		UPDATE urls 
+		SET is_deleted = true 
+		WHERE user_id = $1 AND short_id = ANY($2) AND COALESCE(is_deleted, false) = false
+	`
+
+	_, err := s.db.Exec(query, userID, pq.Array(shortURLs))
+	return err
+}
+
+// IsDeleted проверяет, помечен ли URL как удаленный
+func (s *DatabaseStorage) IsDeleted(shortURL string) (bool, error) {
+	var isDeleted bool
+	err := s.db.QueryRow(`
+		SELECT COALESCE(is_deleted, false)
+		FROM urls
+		WHERE short_id = $1
+	`, shortURL).Scan(&isDeleted)
+
+	if err == sql.ErrNoRows {
+		return false, nil // URL не найден, считаем не удаленным
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return isDeleted, nil
 }
 
 // Close закрывает соединение с базой данных

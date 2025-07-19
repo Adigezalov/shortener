@@ -14,13 +14,14 @@ import (
 
 // FileStorage реализует хранилище URL в файле
 type FileStorage struct {
-	urls       map[string]string   // id -> original_url
-	urlToID    map[string]string   // original_url -> id
-	userURLs   map[string][]string // userID -> []shortURL
-	mu         sync.RWMutex
-	filePath   string
-	fileLock   *os.File
-	flushQueue chan record
+	urls        map[string]string   // id -> original_url
+	urlToID     map[string]string   // original_url -> id
+	userURLs    map[string][]string // userID -> []shortURL
+	deletedURLs map[string]bool     // shortURL -> deleted flag
+	mu          sync.RWMutex
+	filePath    string
+	fileLock    *os.File
+	flushQueue  chan record
 }
 
 type record struct {
@@ -31,11 +32,12 @@ type record struct {
 // NewFileStorage создает новое файловое хранилище URL
 func NewFileStorage(filePath string) *FileStorage {
 	s := &FileStorage{
-		urls:       make(map[string]string),
-		urlToID:    make(map[string]string),
-		userURLs:   make(map[string][]string),
-		filePath:   filePath,
-		flushQueue: make(chan record, 100),
+		urls:        make(map[string]string),
+		urlToID:     make(map[string]string),
+		userURLs:    make(map[string][]string),
+		deletedURLs: make(map[string]bool),
+		filePath:    filePath,
+		flushQueue:  make(chan record, 100),
 	}
 
 	// Создаем директорию, если её нет
@@ -108,6 +110,11 @@ func (s *FileStorage) Get(id string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	// Проверяем, не удален ли URL
+	if s.deletedURLs[id] {
+		return "", false
+	}
+
 	url, ok := s.urls[id]
 	return url, ok
 }
@@ -121,7 +128,7 @@ func (s *FileStorage) FindByOriginalURL(url string) (string, bool) {
 	return id, ok
 }
 
-// GetUserURLs возвращает все URL пользователя
+// GetUserURLs возвращает все URL пользователя (исключая удаленные)
 func (s *FileStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -133,6 +140,11 @@ func (s *FileStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
 
 	result := make([]models.UserURL, 0, len(shortURLs))
 	for _, shortURL := range shortURLs {
+		// Пропускаем удаленные URL
+		if s.deletedURLs[shortURL] {
+			continue
+		}
+
 		if originalURL, exists := s.urls[shortURL]; exists {
 			result = append(result, models.UserURL{
 				ShortURL:    shortURL,
@@ -142,6 +154,41 @@ func (s *FileStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
 	}
 
 	return result, nil
+}
+
+// DeleteUserURLs помечает URL как удаленные для указанного пользователя
+func (s *FileStorage) DeleteUserURLs(userID string, shortURLs []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Получаем список URL пользователя
+	userShortURLs, exists := s.userURLs[userID]
+	if !exists {
+		return nil // Пользователь не найден, ничего не делаем
+	}
+
+	// Создаем карту URL пользователя для быстрого поиска
+	userURLMap := make(map[string]bool)
+	for _, shortURL := range userShortURLs {
+		userURLMap[shortURL] = true
+	}
+
+	// Помечаем URL как удаленные только если они принадлежат пользователю
+	for _, shortURL := range shortURLs {
+		if userURLMap[shortURL] {
+			s.deletedURLs[shortURL] = true
+		}
+	}
+
+	return nil
+}
+
+// IsDeleted проверяет, помечен ли URL как удаленный
+func (s *FileStorage) IsDeleted(shortURL string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.deletedURLs[shortURL], nil
 }
 
 // Close закрывает хранилище и освобождает ресурсы

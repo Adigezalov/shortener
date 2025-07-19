@@ -75,11 +75,12 @@ func main() {
 	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten", handler.ShortenURL)
 	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten/batch", handler.ShortenBatch)
 	r.Get("/{id}", handler.RedirectToURL)
-	
+
 	// Маршруты, требующие аутентификации
 	r.Route("/api/user", func(r chi.Router) {
 		r.Use(customMiddleware.RequireAuth)
 		r.Get("/urls", handler.GetUserURLs)
+		r.Delete("/urls", handler.DeleteUserURLs)
 	})
 
 	// Настраиваем HTTP-сервер

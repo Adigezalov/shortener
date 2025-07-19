@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS urls (
     short_id VARCHAR(10) UNIQUE NOT NULL,
     original_url TEXT NOT NULL,
     user_id VARCHAR(36),
+    is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
