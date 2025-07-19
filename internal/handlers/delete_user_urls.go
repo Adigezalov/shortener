@@ -59,7 +59,7 @@ func (h *Handler) asyncDeleteURLs(userID string, shortURLs []string) {
 		return
 	}
 
-	logger.Logger.Info("URL пользователя успешно помечены как удаленные",
+	logger.Logger.Info("URL пользователя успешно удалены",
 		zap.String("user_id", userID),
 		zap.Int("count", len(shortURLs)))
 }

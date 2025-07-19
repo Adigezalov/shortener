@@ -160,17 +160,16 @@ func (s *DatabaseStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
 	return result, nil
 }
 
-// DeleteUserURLs помечает URL как удаленные для указанного пользователя
+// DeleteUserURLs физически удаляет URL для указанного пользователя
 func (s *DatabaseStorage) DeleteUserURLs(userID string, shortURLs []string) error {
 	if len(shortURLs) == 0 {
 		return nil
 	}
 
-	// Используем batch update для эффективного обновления множества записей
+	// Используем batch delete для эффективного удаления множества записей
 	query := `
-		UPDATE urls 
-		SET is_deleted = true 
-		WHERE user_id = $1 AND short_id = ANY($2) AND COALESCE(is_deleted, false) = false
+		DELETE FROM urls 
+		WHERE user_id = $1 AND short_id = ANY($2)
 	`
 
 	_, err := s.db.Exec(query, userID, pq.Array(shortURLs))

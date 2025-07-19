@@ -156,7 +156,7 @@ func (s *FileStorage) GetUserURLs(userID string) ([]models.UserURL, error) {
 	return result, nil
 }
 
-// DeleteUserURLs помечает URL как удаленные для указанного пользователя
+// DeleteUserURLs физически удаляет URL для указанного пользователя
 func (s *FileStorage) DeleteUserURLs(userID string, shortURLs []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -173,12 +173,35 @@ func (s *FileStorage) DeleteUserURLs(userID string, shortURLs []string) error {
 		userURLMap[shortURL] = true
 	}
 
-	// Помечаем URL как удаленные только если они принадлежат пользователю
+	// Физически удаляем URL только если они принадлежат пользователю
 	for _, shortURL := range shortURLs {
 		if userURLMap[shortURL] {
-			s.deletedURLs[shortURL] = true
+			// Получаем оригинальный URL для удаления из обратного индекса
+			if originalURL, exists := s.urls[shortURL]; exists {
+				delete(s.urlToID, originalURL)
+			}
+			// Удаляем из основного хранилища
+			delete(s.urls, shortURL)
+			// Удаляем из списка удаленных (если был помечен)
+			delete(s.deletedURLs, shortURL)
 		}
 	}
+
+	// Обновляем список URL пользователя, исключая удаленные
+	newUserURLs := make([]string, 0, len(userShortURLs))
+	for _, shortURL := range userShortURLs {
+		found := false
+		for _, deletedURL := range shortURLs {
+			if shortURL == deletedURL && userURLMap[deletedURL] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			newUserURLs = append(newUserURLs, shortURL)
+		}
+	}
+	s.userURLs[userID] = newUserURLs
 
 	return nil
 }
