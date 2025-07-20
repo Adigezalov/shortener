@@ -29,7 +29,6 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	// Получаем ID пользователя из контекста
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
-		logger.Logger.Error("Не удалось получить ID пользователя из контекста")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}

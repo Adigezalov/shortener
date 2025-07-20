@@ -36,6 +36,7 @@ func TestHandler_DeleteUserURLs(t *testing.T) {
 			requestBody: []string{"abc123", "def456"},
 			mockSetup: func(ms *MockURLStorage) {
 				// Настраиваем мок для асинхронной операции
+				// TODO: Обновить до EXPECT() API при переходе на mockery v2+
 				ms.On("DeleteUserURLs", "user123", []string{"abc123", "def456"}).Return(nil)
 			},
 			expectedStatus: http.StatusAccepted,

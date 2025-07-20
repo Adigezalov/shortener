@@ -5,7 +5,7 @@ import (
 	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/models"
 	"github.com/jackc/pgerrcode"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // DatabaseStorage реализует хранилище URL в PostgreSQL
@@ -35,7 +35,7 @@ func (s *DatabaseStorage) Add(id string, url string) (string, bool, error) {
 
 	if err != nil {
 		// Проверяем, является ли ошибка нарушением уникальности
-		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == pgerrcode.UniqueViolation {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == pgerrcode.UniqueViolation {
 			// Если произошел конфликт, проверяем по какому полю
 			existingID, exists := s.FindByOriginalURL(url)
 			if exists {
@@ -66,7 +66,7 @@ func (s *DatabaseStorage) AddWithUser(id string, url string, userID string) (str
 
 	if err != nil {
 		// Проверяем, является ли ошибка нарушением уникальности
-		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == pgerrcode.UniqueViolation {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == pgerrcode.UniqueViolation {
 			// Если произошел конфликт, проверяем по какому полю
 			existingID, exists := s.FindByOriginalURL(url)
 			if exists {
@@ -173,7 +173,7 @@ func (s *DatabaseStorage) DeleteUserURLs(userID string, shortURLs []string) erro
 		WHERE user_id = $1 AND short_id = ANY($2)
 	`
 
-	_, err := s.db.Exec(query, userID, pq.Array(shortURLs))
+	_, err := s.db.Exec(query, userID, shortURLs)
 	return err
 }
 

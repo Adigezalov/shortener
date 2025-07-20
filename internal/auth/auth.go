@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -31,18 +32,21 @@ func SignUserID(userID string) string {
 }
 
 // VerifyUserID проверяет подпись куки и возвращает ID пользователя
-func VerifyUserID(signedUserID string) (string, bool) {
+func VerifyUserID(signedUserID string) (string, error) {
 	// Разделяем userID и подпись по последней точке
 	lastDotIndex := strings.LastIndex(signedUserID, ".")
 	if lastDotIndex == -1 {
-		return "", false
+		return "", errors.New("invalid signed user ID format: missing signature separator")
 	}
 
 	userID := signedUserID[:lastDotIndex]
 	signature := signedUserID[lastDotIndex+1:]
 
-	if userID == "" || signature == "" {
-		return "", false
+	if userID == "" {
+		return "", errors.New("invalid signed user ID: empty user ID")
+	}
+	if signature == "" {
+		return "", errors.New("invalid signed user ID: empty signature")
 	}
 
 	// Проверяем подпись
@@ -51,39 +55,45 @@ func VerifyUserID(signedUserID string) (string, bool) {
 	expectedSignature := hex.EncodeToString(h.Sum(nil))
 
 	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
-		return "", false
+		return "", errors.New("invalid signature: user ID verification failed")
 	}
 
-	return userID, true
+	return userID, nil
 }
 
 // GetUserIDFromRequest извлекает и проверяет ID пользователя из куки или заголовка Authorization
-func GetUserIDFromRequest(r *http.Request) (string, bool) {
+func GetUserIDFromRequest(r *http.Request) (string, error) {
 	// Сначала пробуем получить из заголовка Authorization
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" {
 		// Ожидаем формат "Bearer <signed_user_id>"
 		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
 			signedUserID := authHeader[7:]
-			userID, valid := VerifyUserID(signedUserID)
-			if valid {
-				return userID, true
+			userID, err := VerifyUserID(signedUserID)
+			if err == nil {
+				return userID, nil
+			}
+		} else {
+			// Если нет префикса Bearer, пробуем как есть
+			userID, err := VerifyUserID(authHeader)
+			if err == nil {
+				return userID, nil
 			}
 		}
-		// Если нет префикса Bearer, пробуем как есть
-		userID, valid := VerifyUserID(authHeader)
-		if valid {
-			return userID, true
-		}
 	}
 
-	// Если заголовка нет, пробуем получить из куки
+	// Если заголовка нет или он невалидный, пробуем получить из куки
 	cookie, err := r.Cookie(CookieName)
 	if err != nil {
-		return "", false
+		return "", errors.New("authentication required: no valid authorization header or cookie found")
 	}
 
-	return VerifyUserID(cookie.Value)
+	userID, err := VerifyUserID(cookie.Value)
+	if err != nil {
+		return "", fmt.Errorf("invalid cookie: %w", err)
+	}
+
+	return userID, nil
 }
 
 // SetUserIDCookie устанавливает куку с ID пользователя

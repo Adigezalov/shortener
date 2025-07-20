@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"syscall"
 )
@@ -91,7 +92,7 @@ func (s *MemoryStorage) Add(id string, url string) (string, bool, error) {
 
 	// Если включен режим файла, добавляем запись в очередь на сохранение
 	if s.fileMode {
-		uuid := fmt.Sprintf("%d", s.nextID)
+		uuid := strconv.Itoa(s.nextID)
 		s.flushQueue <- models.URLRecord{
 			UUID:        uuid,
 			ShortURL:    id,
@@ -145,7 +146,7 @@ func (s *MemoryStorage) AddWithUser(id string, url string, userID string) (strin
 
 	// Если включен режим файла, добавляем запись в очередь на сохранение
 	if s.fileMode {
-		uuid := fmt.Sprintf("%d", s.nextID)
+		uuid := strconv.Itoa(s.nextID)
 		s.flushQueue <- models.URLRecord{
 			UUID:        uuid,
 			ShortURL:    id,
@@ -412,7 +413,9 @@ func (s *MemoryStorage) Close() error {
 
 // parseID преобразует строковый ID в int
 func parseID(id string) int {
-	var result int
-	_, _ = fmt.Sscanf(id, "%d", &result)
+	result, err := strconv.Atoi(id)
+	if err != nil {
+		return 0
+	}
 	return result
 }

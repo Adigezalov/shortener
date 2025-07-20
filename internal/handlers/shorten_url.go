@@ -23,7 +23,6 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	var request models.ShortenRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&request); err != nil {
-		logger.Logger.Error("Ошибка декодирования JSON", zap.Error(err))
 		http.Error(w, "Неверный формат JSON", http.StatusBadRequest)
 		return
 	}
@@ -37,7 +36,6 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	// Получаем ID пользователя из контекста
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
-		logger.Logger.Error("Не удалось получить ID пользователя из контекста")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}

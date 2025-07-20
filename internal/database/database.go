@@ -5,7 +5,7 @@ import (
 	"embed"
 	"errors"
 	"github.com/jackc/pgerrcode"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgconn"
 	"strings"
 )
 
@@ -22,7 +22,7 @@ type DB struct {
 
 // New создает новое подключение к базе данных и инициализирует схему
 func New(dsn string) (*DB, error) {
-	db, err := sql.Open("postgres", dsn)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -86,10 +86,10 @@ func (db *DB) AddURL(shortID, originalURL string) (string, bool, error) {
 
 	if err != nil {
 		// Проверяем, является ли ошибка нарушением уникальности
-		if pqErr, ok := err.(*pq.Error); ok {
-			if pqErr.Code == pgerrcode.UniqueViolation {
+		if pgErr, ok := err.(*pgconn.PgError); ok {
+			if pgErr.Code == pgerrcode.UniqueViolation {
 				// Если это нарушение уникальности original_url, получаем существующий short_id
-				if strings.Contains(pqErr.Constraint, "original_url") {
+				if strings.Contains(pgErr.ConstraintName, "original_url") {
 					existingID, exists, err := db.FindByOriginalURL(originalURL)
 					if err != nil {
 						return "", false, err

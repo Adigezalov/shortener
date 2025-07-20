@@ -14,7 +14,6 @@ func (h *Handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 	// Получаем ID пользователя из контекста
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
-		logger.Logger.Error("Не удалось получить ID пользователя из контекста")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -22,17 +21,12 @@ func (h *Handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 	// Декодируем список URL для удаления
 	var shortURLs []string
 	if err := json.NewDecoder(r.Body).Decode(&shortURLs); err != nil {
-		logger.Logger.Error("Ошибка декодирования запроса на удаление URL",
-			zap.String("user_id", userID),
-			zap.Error(err))
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
 	// Проверяем, что список не пустой
 	if len(shortURLs) == 0 {
-		logger.Logger.Warn("Получен пустой список URL для удаления",
-			zap.String("user_id", userID))
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
@@ -55,7 +49,8 @@ func (h *Handler) asyncDeleteURLs(userID string, shortURLs []string) {
 		logger.Logger.Error("Ошибка удаления URL пользователя",
 			zap.String("user_id", userID),
 			zap.Strings("short_urls", shortURLs),
-			zap.Error(err))
+			zap.Error(err),
+		)
 		return
 	}
 
