@@ -22,23 +22,34 @@ func TestHandler_RedirectToURL(t *testing.T) {
 	tests := []struct {
 		name           string
 		urlID          string
-		mockSetup      func(*MockStorage)
+		mockSetup      func(*MockURLStorage)
 		expectedStatus int
 		expectedURL    string
 	}{
 		{
 			name:  "Успешное_перенаправление",
 			urlID: "abc123",
-			mockSetup: func(ms *MockStorage) {
+			mockSetup: func(ms *MockURLStorage) {
+				ms.On("IsDeleted", "abc123").Return(false, nil)
 				ms.On("Get", "abc123").Return("https://example.com", true)
 			},
 			expectedStatus: http.StatusTemporaryRedirect,
 			expectedURL:    "https://example.com",
 		},
 		{
+			name:  "URL_удален",
+			urlID: "deleted123",
+			mockSetup: func(ms *MockURLStorage) {
+				ms.On("IsDeleted", "deleted123").Return(true, nil)
+			},
+			expectedStatus: http.StatusGone,
+			expectedURL:    "",
+		},
+		{
 			name:  "URL_не_найден",
 			urlID: "notfound",
-			mockSetup: func(ms *MockStorage) {
+			mockSetup: func(ms *MockURLStorage) {
+				ms.On("IsDeleted", "notfound").Return(false, nil)
 				ms.On("Get", "notfound").Return("", false)
 			},
 			expectedStatus: http.StatusNotFound,
@@ -47,7 +58,7 @@ func TestHandler_RedirectToURL(t *testing.T) {
 		{
 			name:           "Некорректный_ID",
 			urlID:          "//", // Некорректный ID, который вызовет 404 в Chi router
-			mockSetup:      func(ms *MockStorage) {},
+			mockSetup:      func(ms *MockURLStorage) {},
 			expectedStatus: http.StatusNotFound,
 			expectedURL:    "",
 		},
@@ -56,7 +67,7 @@ func TestHandler_RedirectToURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Создаем мок хранилища
-			mockStorage := new(MockStorage)
+			mockStorage := new(MockURLStorage)
 
 			// Настраиваем мок
 			tt.mockSetup(mockStorage)

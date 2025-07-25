@@ -16,6 +16,23 @@ func (h *Handler) RedirectToURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Проверяем, не удален ли URL
+	isDeleted, err := h.storage.IsDeleted(id)
+	if err != nil {
+		logger.Logger.Error("Ошибка проверки статуса удаления URL",
+			zap.String("id", id),
+			zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	if isDeleted {
+		logger.Logger.Info("Попытка доступа к удаленному URL",
+			zap.String("id", id))
+		http.Error(w, "Gone", http.StatusGone)
+		return
+	}
+
 	// Ищем оригинальный URL в хранилище
 	originalURL, found := h.storage.Get(id)
 	if !found {

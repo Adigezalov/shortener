@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/logger"
+	"github.com/Adigezalov/shortener/internal/middleware"
 	"github.com/Adigezalov/shortener/internal/models"
 	"go.uber.org/zap"
 	"net/http"
@@ -22,7 +23,6 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	var request models.ShortenRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&request); err != nil {
-		logger.Logger.Error("Ошибка декодирования JSON", zap.Error(err))
 		http.Error(w, "Неверный формат JSON", http.StatusBadRequest)
 		return
 	}
@@ -33,9 +33,16 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Генерируем новый ID и пытаемся добавить URL
+	// Получаем ID пользователя из контекста
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Генерируем новый ID и пытаемся добавить URL с привязкой к пользователю
 	id := h.shortener.Shorten(request.URL)
-	id, exists, err := h.storage.Add(id, request.URL)
+	id, exists, err := h.storage.AddWithUser(id, request.URL, userID)
 
 	if err != nil {
 		if err == database.ErrURLConflict {

@@ -28,3 +28,17 @@ type URLRecord struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+// UserURL представляет URL пользователя
+type UserURL struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
+// URLStorage представляет запись URL в базе данных
+type URLStorage struct {
+	UUID        string `db:"user_id"`
+	ShortURL    string `db:"short_url"`
+	OriginalURL string `db:"original_url"`
+	DeletedFlag bool   `db:"is_deleted"`
+}

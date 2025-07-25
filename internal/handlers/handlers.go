@@ -1,10 +1,16 @@
 package handlers
 
+import "github.com/Adigezalov/shortener/internal/models"
+
 // URLStorage интерфейс для хранения URL
 type URLStorage interface {
 	Add(id string, url string) (string, bool, error)
+	AddWithUser(id string, url string, userID string) (string, bool, error)
 	Get(id string) (string, bool)
 	FindByOriginalURL(url string) (string, bool)
+	GetUserURLs(userID string) ([]models.UserURL, error)
+	DeleteUserURLs(userID string, shortURLs []string) error
+	IsDeleted(shortURL string) (bool, error)
 	Close() error
 }
 

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/Adigezalov/shortener/internal/logger"
+	"github.com/Adigezalov/shortener/internal/middleware"
 	"github.com/Adigezalov/shortener/internal/models"
 	"go.uber.org/zap"
 	"net/http"
@@ -16,7 +17,6 @@ func (h *Handler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
 	var request []models.BatchShortenRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&request); err != nil {
-		logger.Logger.Error("Ошибка декодирования JSON", zap.Error(err))
 		http.Error(w, "Неверный формат JSON", http.StatusBadRequest)
 		return
 	}
@@ -24,6 +24,13 @@ func (h *Handler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
 	// Проверяем, что батч не пустой
 	if len(request) == 0 {
 		http.Error(w, "Пустой список URL", http.StatusBadRequest)
+		return
+	}
+
+	// Получаем ID пользователя из контекста
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -38,9 +45,9 @@ func (h *Handler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Генерируем новый ID и пытаемся добавить URL
+		// Генерируем новый ID и пытаемся добавить URL с привязкой к пользователю
 		id := h.shortener.Shorten(item.OriginalURL)
-		id, exists, err := h.storage.Add(id, item.OriginalURL)
+		id, exists, err := h.storage.AddWithUser(id, item.OriginalURL, userID)
 		if err != nil && err != database.ErrURLConflict {
 			logger.Logger.Error("Ошибка добавления URL",
 				zap.String("correlation_id", item.CorrelationID),

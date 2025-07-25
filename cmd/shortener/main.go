@@ -11,7 +11,7 @@ import (
 	"github.com/Adigezalov/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 	"log"
 	"net/http"
@@ -67,6 +67,7 @@ func main() {
 	r.Use(customMiddleware.WithRequestID)
 	r.Use(customMiddleware.RequestLogger)
 	r.Use(customMiddleware.GzipMiddleware)
+	r.Use(customMiddleware.AuthMiddleware) // Добавляем middleware аутентификации
 
 	// Определяем маршруты
 	r.Get("/ping", handler.PingDB)
@@ -74,6 +75,13 @@ func main() {
 	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten", handler.ShortenURL)
 	r.With(customMiddleware.JSONContentTypeMiddleware()).Post("/api/shorten/batch", handler.ShortenBatch)
 	r.Get("/{id}", handler.RedirectToURL)
+
+	// Маршруты, требующие аутентификации
+	r.Route("/api/user", func(r chi.Router) {
+		r.Use(customMiddleware.RequireAuth)
+		r.Get("/urls", handler.GetUserURLs)
+		r.Delete("/urls", handler.DeleteUserURLs)
+	})
 
 	// Настраиваем HTTP-сервер
 	srv := &http.Server{
