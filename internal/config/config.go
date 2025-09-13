@@ -8,12 +8,12 @@ import (
 
 // Константы для значений по умолчанию
 const (
-	DefaultServerAddress   = ":8080"
-	DefaultBaseURL         = "http://localhost:8080"
-	DefaultFileStorage     = "storage.json"
-	DefaultDatabaseDSN     = ""
-	DefaultProfilingPort   = ":6060"
-	DefaultProfilesDir     = "benchmarks/profiles"
+	DefaultServerAddress = ":8080"
+	DefaultBaseURL       = "http://localhost:8080"
+	DefaultFileStorage   = "storage.json"
+	DefaultDatabaseDSN   = ""
+	DefaultProfilingPort = ":6060"
+	DefaultProfilesDir   = "benchmarks/profiles"
 )
 
 // Config содержит конфигурационные параметры приложения

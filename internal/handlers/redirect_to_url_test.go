@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 func TestHandler_RedirectToURL(t *testing.T) {

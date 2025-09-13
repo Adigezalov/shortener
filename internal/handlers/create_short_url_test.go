@@ -3,14 +3,15 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/Adigezalov/shortener/internal/middleware"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 func TestHandler_CreateShortURL(t *testing.T) {
@@ -77,13 +78,13 @@ func TestHandler_CreateShortURL(t *testing.T) {
 
 			// Создаем тестовый запрос
 			req := httptest.NewRequest("POST", "/", bytes.NewBufferString(tt.inputURL))
-			
+
 			// Добавляем userID в контекст для тестов, которые не проверяют пустой URL
 			if tt.inputURL != "" {
 				ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
 				req = req.WithContext(ctx)
 			}
-			
+
 			w := httptest.NewRecorder()
 
 			// Вызываем тестируемый обработчик

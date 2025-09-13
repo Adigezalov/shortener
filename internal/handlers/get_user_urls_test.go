@@ -65,7 +65,7 @@ func TestHandler_GetUserURLs(t *testing.T) {
 
 			// Создаем запрос
 			req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
-			
+
 			// Добавляем userID в контекст, если он есть
 			if tt.userID != "" {
 				ctx := context.WithValue(req.Context(), middleware.UserIDKey, tt.userID)
@@ -87,7 +87,7 @@ func TestHandler_GetUserURLs(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
 				assert.Len(t, response, len(tt.userURLs))
-				
+
 				for i, userURL := range response {
 					assert.Equal(t, "http://localhost:8080/"+tt.userURLs[i].ShortURL, userURL.ShortURL)
 					assert.Equal(t, tt.userURLs[i].OriginalURL, userURL.OriginalURL)

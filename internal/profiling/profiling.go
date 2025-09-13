@@ -23,7 +23,7 @@ func NewServer(cfg *config.Config) *Server {
 	}
 
 	mux := http.NewServeMux()
-	
+
 	// pprof endpoints автоматически регистрируются при импорте net/http/pprof
 	// Добавляем их явно для ясности
 	mux.HandleFunc("/debug/pprof/", http.DefaultServeMux.ServeHTTP)
@@ -46,7 +46,7 @@ func (s *Server) Start() error {
 		return nil
 	}
 
-	logger.Logger.Info("Starting profiling server", 
+	logger.Logger.Info("Starting profiling server",
 		zap.String("address", s.server.Addr))
 
 	go func() {

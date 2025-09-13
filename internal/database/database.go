@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"strings"
+
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"strings"
 )
 
 //go:embed schema.sql

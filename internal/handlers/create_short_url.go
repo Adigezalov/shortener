@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"errors"
+	"io"
+	"net/http"
+
 	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/Adigezalov/shortener/internal/middleware"
 	"go.uber.org/zap"
-	"io"
-	"net/http"
 )
 
 // CreateShortURL обрабатывает POST запрос на создание сокращенного URL (text/plain)

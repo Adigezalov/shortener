@@ -2,12 +2,13 @@ package middleware
 
 import (
 	"compress/gzip"
-	"github.com/Adigezalov/shortener/internal/logger"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/Adigezalov/shortener/internal/logger"
+	"go.uber.org/zap"
 )
 
 // Типы контента, для которых будем применять сжатие
