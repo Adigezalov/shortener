@@ -38,11 +38,14 @@ type MemoryStorage struct {
 // Если путь к файлу не пустой, данные будут сохраняться в файл
 // и восстанавливаться из него при запуске
 func NewMemoryStorage(storagePath string) *MemoryStorage {
+	// Предварительно выделяем память для map'ов с ожидаемой емкостью
+	const initialCapacity = 1000
+	
 	storage := &MemoryStorage{
-		urls:        make(map[string]string),
-		urlToID:     make(map[string]string),
-		userURLs:    make(map[string][]string),
-		deletedURLs: make(map[string]bool),
+		urls:        make(map[string]string, initialCapacity),
+		urlToID:     make(map[string]string, initialCapacity),
+		userURLs:    make(map[string][]string, initialCapacity/10), // Меньше пользователей
+		deletedURLs: make(map[string]bool, initialCapacity/20),     // Еще меньше удаленных URL
 		nextID:      1,
 		storagePath: storagePath,
 		fileMode:    storagePath != "",

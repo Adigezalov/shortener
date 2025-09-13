@@ -3,7 +3,7 @@ package shortener
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
+	"strings"
 )
 
 // Service сервис для сокращения URL
@@ -32,5 +32,10 @@ func (s *Service) Shorten(url string) string {
 
 // BuildShortURL строит полный короткий URL из идентификатора
 func (s *Service) BuildShortURL(id string) string {
-	return fmt.Sprintf("%s/%s", s.baseURL, id)
+	var builder strings.Builder
+	builder.Grow(len(s.baseURL) + 1 + len(id)) // Предварительно выделяем память
+	builder.WriteString(s.baseURL)
+	builder.WriteByte('/')
+	builder.WriteString(id)
+	return builder.String()
 }

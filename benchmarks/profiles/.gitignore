@@ -1,0 +1,6 @@
+# Ignore all profile files
+*.pprof
+
+# Keep the optimization report and gitignore
+!optimization_report.md
+!.gitignore
