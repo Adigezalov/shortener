@@ -1,4 +1,4 @@
-.PHONY: build test benchmark profile clean fmt fmt-check lint check help
+.PHONY: build test benchmark profile clean fmt fmt-check lint check doc help
 
 # Сборка приложения
 build:
@@ -62,6 +62,29 @@ lint:
 check: fmt-check lint test
 	@echo "All checks passed!"
 
+# Генерация документации
+doc:
+	@echo "=== Документация пакетов ==="
+	@echo ""
+	@echo "Handlers:"
+	@go doc -short ./internal/handlers
+	@echo ""
+	@echo "Models:"
+	@go doc -short ./internal/models
+	@echo ""
+	@echo "Config:"
+	@go doc -short ./internal/config
+	@echo ""
+	@echo "Shortener:"
+	@go doc -short ./internal/shortener
+	@echo ""
+	@echo "=== Примеры использования ==="
+	@go test -run "^Example$$" ./examples/
+	@echo ""
+	@echo "Для просмотра полной документации:"
+	@echo "  godoc -http=:6060"
+	@echo "  Затем откройте http://localhost:6060/pkg/github.com/Adigezalov/shortener/"
+
 # Очистка профилей и бинарников
 clean:
 	rm -f shortener
@@ -85,5 +108,6 @@ help:
 	@echo "  fmt-check          - Проверить форматирование (для CI/CD)"
 	@echo "  lint               - Запустить линтер (golangci-lint или go vet)"
 	@echo "  check              - Комплексная проверка (форматирование + линтинг + тесты)"
+	@echo "  doc                - Генерация и просмотр документации"
 	@echo "  clean              - Очистить профили и бинарники"
 	@echo "  help               - Показать эту справку"

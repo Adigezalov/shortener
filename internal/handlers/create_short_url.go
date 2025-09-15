@@ -11,7 +11,31 @@ import (
 	"go.uber.org/zap"
 )
 
-// CreateShortURL обрабатывает POST запрос на создание сокращенного URL (text/plain)
+// CreateShortURL обрабатывает POST запрос на создание сокращенного URL через text/plain API.
+//
+// Эндпоинт: POST /
+// Content-Type: text/plain
+// Тело запроса: оригинальный URL в виде строки
+//
+// Ответы:
+//   - 201 Created: короткий URL в теле ответа
+//   - 400 Bad Request: некорректный запрос (пустой URL)
+//   - 409 Conflict: URL уже существует (возвращает существующий короткий URL)
+//   - 500 Internal Server Error: внутренняя ошибка сервера
+//
+// Пример запроса:
+//
+//	POST / HTTP/1.1
+//	Content-Type: text/plain
+//
+//	https://example.com/very/long/url
+//
+// Пример ответа:
+//
+//	HTTP/1.1 201 Created
+//	Content-Type: text/plain
+//
+//	http://localhost:8080/abc12345
 func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	// Читаем оригинальный URL из тела запроса
 	body, err := io.ReadAll(r.Body)
