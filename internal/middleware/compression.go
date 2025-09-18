@@ -2,17 +2,33 @@ package middleware
 
 import (
 	"compress/gzip"
-	"github.com/Adigezalov/shortener/internal/logger"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strings"
+	"sync"
+
+	"github.com/Adigezalov/shortener/internal/logger"
+	"go.uber.org/zap"
 )
 
 // Типы контента, для которых будем применять сжатие
 var compressibleTypes = []string{
 	"application/json",
 	"text/html",
+}
+
+// Пул gzip writer'ов для переиспользования
+var gzipWriterPool = sync.Pool{
+	New: func() interface{} {
+		return gzip.NewWriter(nil)
+	},
+}
+
+// Пул gzip reader'ов для переиспользования
+var gzipReaderPool = sync.Pool{
+	New: func() interface{} {
+		return &gzip.Reader{}
+	},
 }
 
 // gzipWriter - обертка для http.ResponseWriter, которая применяет gzip-сжатие
@@ -98,15 +114,19 @@ func shouldCompress(contentType string) bool {
 	return false
 }
 
-// GzipMiddleware middleware для обработки gzip-сжатия
+// GzipMiddleware middleware для обработки gzip-сжатия с оптимизацией пулов
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Обработка запроса, сжатого с помощью gzip
 		if r.Header.Get("Content-Encoding") == "gzip" {
-			// Создаем gzip reader
-			gz, err := gzip.NewReader(r.Body)
+			// Получаем gzip reader из пула
+			gz := gzipReaderPool.Get().(*gzip.Reader)
+			defer gzipReaderPool.Put(gz)
+
+			// Инициализируем reader с новым источником
+			err := gz.Reset(r.Body)
 			if err != nil {
-				logger.Logger.Error("Ошибка создания gzip reader", zap.Error(err))
+				logger.Logger.Error("Ошибка инициализации gzip reader", zap.Error(err))
 				http.Error(w, "Ошибка декодирования gzip запроса", http.StatusBadRequest)
 				return
 			}
@@ -120,8 +140,12 @@ func GzipMiddleware(next http.Handler) http.Handler {
 
 		// Проверяем, поддерживает ли клиент gzip-сжатие в ответах
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			// Создаем объект для записи сжатых данных
-			gz := gzip.NewWriter(w)
+			// Получаем gzip writer из пула
+			gz := gzipWriterPool.Get().(*gzip.Writer)
+			defer gzipWriterPool.Put(gz)
+
+			// Сбрасываем writer для нового использования
+			gz.Reset(w)
 
 			// Создаем обертку для ResponseWriter
 			gzipW := &gzipWriter{

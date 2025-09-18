@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/Adigezalov/shortener/internal/middleware"
 	"github.com/Adigezalov/shortener/internal/models"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 func TestHandler_ShortenBatch(t *testing.T) {
@@ -134,13 +135,13 @@ func TestHandler_ShortenBatch(t *testing.T) {
 			// Создаем тестовый запрос
 			req := httptest.NewRequest("POST", "/api/shorten/batch", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", tt.contentType)
-			
+
 			// Добавляем userID в контекст для тестов, которые требуют аутентификации
 			if tt.expectedStatus == http.StatusCreated {
 				ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
 				req = req.WithContext(ctx)
 			}
-			
+
 			w := httptest.NewRecorder()
 
 			// Вызываем тестируемый обработчик

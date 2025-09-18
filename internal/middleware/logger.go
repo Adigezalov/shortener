@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/Adigezalov/shortener/internal/logger"
-	"go.uber.org/zap"
 	"net/http"
 	"runtime/debug"
 	"time"
+
+	"github.com/Adigezalov/shortener/internal/logger"
+	"go.uber.org/zap"
 )
 
 // contextKey пользовательский тип для ключей контекста

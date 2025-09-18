@@ -2,15 +2,45 @@ package handlers
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/Adigezalov/shortener/internal/database"
 	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/Adigezalov/shortener/internal/middleware"
 	"github.com/Adigezalov/shortener/internal/models"
 	"go.uber.org/zap"
-	"net/http"
 )
 
-// ShortenURL обрабатывает POST запрос на создание сокращенного URL (JSON API)
+// ShortenURL обрабатывает POST запрос на создание сокращенного URL через JSON API.
+//
+// Эндпоинт: POST /api/shorten
+// Content-Type: application/json
+// Тело запроса: JSON объект с полем "url"
+//
+// Ответы:
+//   - 201 Created: JSON с коротким URL в поле "result"
+//   - 400 Bad Request: некорректный JSON или пустой URL
+//   - 409 Conflict: URL уже существует (возвращает существующий короткий URL)
+//   - 415 Unsupported Media Type: неправильный Content-Type
+//   - 500 Internal Server Error: внутренняя ошибка сервера
+//
+// Пример запроса:
+//
+//	POST /api/shorten HTTP/1.1
+//	Content-Type: application/json
+//
+//	{
+//	  "url": "https://example.com/very/long/url"
+//	}
+//
+// Пример ответа:
+//
+//	HTTP/1.1 201 Created
+//	Content-Type: application/json
+//
+//	{
+//	  "result": "http://localhost:8080/abc12345"
+//	}
 func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	// Проверяем заголовок Content-Type
 	contentType := r.Header.Get("Content-Type")

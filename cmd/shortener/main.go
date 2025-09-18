@@ -2,23 +2,25 @@ package main
 
 import (
 	"context"
-	"github.com/Adigezalov/shortener/internal/config"
-	"github.com/Adigezalov/shortener/internal/database"
-	"github.com/Adigezalov/shortener/internal/handlers"
-	"github.com/Adigezalov/shortener/internal/logger"
-	customMiddleware "github.com/Adigezalov/shortener/internal/middleware"
-	"github.com/Adigezalov/shortener/internal/shortener"
-	"github.com/Adigezalov/shortener/internal/storage"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/Adigezalov/shortener/internal/config"
+	"github.com/Adigezalov/shortener/internal/database"
+	"github.com/Adigezalov/shortener/internal/handlers"
+	"github.com/Adigezalov/shortener/internal/logger"
+	customMiddleware "github.com/Adigezalov/shortener/internal/middleware"
+	"github.com/Adigezalov/shortener/internal/profiling"
+	"github.com/Adigezalov/shortener/internal/shortener"
+	"github.com/Adigezalov/shortener/internal/storage"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -30,6 +32,19 @@ func main() {
 
 	// Загружаем конфигурацию
 	cfg := config.NewConfig()
+
+	// Инициализируем сервер профилирования
+	profilingServer := profiling.NewServer(cfg)
+	if profilingServer != nil {
+		if err := profilingServer.Start(); err != nil {
+			logger.Logger.Error("Ошибка запуска сервера профилирования", zap.Error(err))
+		}
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			profilingServer.Stop(ctx)
+		}()
+	}
 
 	// Инициализируем хранилище URL с помощью фабрики
 	store, err := storage.Factory(cfg.DatabaseDSN, cfg.FileStoragePath)
@@ -100,6 +115,8 @@ func main() {
 			zap.String("base_url", cfg.BaseURL),
 			zap.String("storage_path", cfg.FileStoragePath),
 			zap.String("database_dsn", cfg.DatabaseDSN),
+			zap.Bool("profiling_enabled", cfg.ProfilingEnabled),
+			zap.String("profiling_port", cfg.ProfilingPort),
 		)
 
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

@@ -14,6 +14,13 @@
 # Binaries
 cmd/shortener/main
 cmd/shortener/shortener
+shortener
+
+# Profile files
+*.pprof
+
+# Storage files
+storage.json
 
 # Dependency directories (remove the comment below to include it)
 vendor/
@@ -21,3 +28,12 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

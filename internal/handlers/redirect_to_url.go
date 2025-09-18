@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/Adigezalov/shortener/internal/logger"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 // RedirectToURL обрабатывает GET запрос на перенаправление по короткому URL
