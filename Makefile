@@ -1,4 +1,4 @@
-.PHONY: build test benchmark profile clean fmt fmt-check lint check doc help deps staticlint staticlint-full
+.PHONY: build build-with-version test benchmark profile clean fmt fmt-check lint check doc help deps staticlint staticlint-full
 
 # Установка зависимостей
 deps:
@@ -16,6 +16,10 @@ deps:
 # Сборка приложения
 build:
 	go build -o shortener ./cmd/shortener
+
+# Сборка приложения с информацией о версии
+build-with-version:
+	go build -ldflags="-X 'main.buildVersion=$(VERSION)' -X 'main.buildDate=$(shell date +'%Y/%m/%d %H:%M:%S')' -X 'main.buildCommit=$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)'" -o shortener ./cmd/shortener
 
 # Запуск тестов
 test:
@@ -120,6 +124,7 @@ help:
 	@echo "Доступные команды:"
 	@echo "  deps               - Установить зависимости и инструменты разработки"
 	@echo "  build              - Собрать приложение"
+	@echo "  build-with-version - Собрать приложение с информацией о версии (VERSION=x.x.x make build-with-version)"
 	@echo "  test               - Запустить тесты"
 	@echo "  benchmark          - Запустить бенчмарки"
 	@echo "  profile            - Полный workflow профилирования"

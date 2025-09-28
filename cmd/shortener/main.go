@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -23,7 +24,20 @@ import (
 	"go.uber.org/zap"
 )
 
+// Глобальные переменные для информации о сборке.
+// Значения устанавливаются во время сборки с помощью флагов -ldflags.
+var (
+	buildVersion = "N/A" // Версия сборки
+	buildDate    = "N/A" // Дата сборки
+	buildCommit  = "N/A" // Коммит Git
+)
+
 func main() {
+	// Выводим информацию о сборке
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
+
 	// Инициализируем логгер
 	if err := logger.Initialize(); err != nil {
 		log.Fatalf("Ошибка инициализации логгера: %v", err)
