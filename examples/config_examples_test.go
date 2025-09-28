@@ -14,7 +14,7 @@ func Example_configDefault() {
 	os.Unsetenv("BASE_URL")
 	os.Unsetenv("DATABASE_DSN")
 
-	cfg := config.NewConfig()
+	cfg := config.NewConfigFromEnv()
 
 	fmt.Printf("Server Address: %s\n", cfg.ServerAddress)
 	fmt.Printf("Base URL: %s\n", cfg.BaseURL)
@@ -39,7 +39,7 @@ func Example_configEnvironmentVariables() {
 	os.Setenv("PROFILING_ENABLED", "true")
 	os.Setenv("PROFILING_PORT", ":6061")
 
-	cfg := config.NewConfig()
+	cfg := config.NewConfigFromEnv()
 
 	fmt.Printf("Server Address: %s\n", cfg.ServerAddress)
 	fmt.Printf("Base URL: %s\n", cfg.BaseURL)

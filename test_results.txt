@@ -1,0 +1,119 @@
+ok  	github.com/Adigezalov/shortener/benchmarks/utils	(cached)	coverage: 28.1% of statements
+	github.com/Adigezalov/shortener/cmd/shortener		coverage: 0.0% of statements
+	github.com/Adigezalov/shortener/cmd/staticlint		coverage: 0.0% of statements
+{"level":"info","timestamp":"2025-09-28T19:41:48.937+0500","caller":"storage/memory_storage.go:77","msg":"Создано хранилище URL в памяти"}
+{"level":"info","timestamp":"2025-09-28T19:41:48.939+0500","caller":"storage/memory_storage.go:77","msg":"Создано хранилище URL в памяти"}
+--- FAIL: Example_shortenURLJSON (0.00s)
+got:
+Статус: 201
+Запрос: {URL:https://example.com/api/endpoint}
+Ответ: {Result:http://localhost:8080/X6LIMLs9}
+want:
+Статус: 201
+Запрос: {URL:https://example.com/api/endpoint}
+Ответ: {Result:http://localhost:8080/xyz98765}
+{"level":"info","timestamp":"2025-09-28T19:41:48.940+0500","caller":"storage/memory_storage.go:77","msg":"Создано хранилище URL в памяти"}
+--- FAIL: Example_shortenBatch (0.00s)
+got:
+Статус: 201
+Количество URL в запросе: 3
+Количество URL в ответе: 3
+  1. ID: req_1, URL: http://localhost:8080/7vdtOteO
+  2. ID: req_2, URL: http://localhost:8080/96Li-Bxx
+  3. ID: req_3, URL: http://localhost:8080/2QCvuVOw
+want:
+Статус: 201
+Количество URL в запросе: 3
+Количество URL в ответе: 3
+  1. ID: req_1, URL: http://localhost:8080/abc123
+  2. ID: req_2, URL: http://localhost:8080/def456
+  3. ID: req_3, URL: http://localhost:8080/ghi789
+{"level":"info","timestamp":"2025-09-28T19:41:48.941+0500","caller":"storage/memory_storage.go:77","msg":"Создано хранилище URL в памяти"}
+--- FAIL: Example_redirectToURL (0.00s)
+got:
+Статус: 307
+Короткий ID: T94Ids18
+Location заголовок: https://example.com/target/page
+want:
+Статус: 307
+Короткий ID: abc12345
+Location заголовок: https://example.com/target/page
+{"level":"info","timestamp":"2025-09-28T19:41:48.942+0500","caller":"storage/memory_storage.go:77","msg":"Создано хранилище URL в памяти"}
+{"level":"info","timestamp":"2025-09-28T19:41:48.943+0500","caller":"storage/memory_storage.go:77","msg":"Создано хранилище URL в памяти"}
+--- FAIL: Example_configDefault (0.00s)
+got:
+Server Address: :8080
+Base URL: http://localhost:8080
+File Storage: storage.json
+Database DSN: 
+Profiling Enabled: false
+want:
+Server Address: :8080
+Base URL: http://localhost:8080
+File Storage: storage.json
+Database DSN:
+Profiling Enabled: false
+--- FAIL: Example_serviceBasic (0.00s)
+got:
+Оригинальный URL: https://example.com/very/long/path/to/resource
+Короткий ID: kVxw3OA9
+Полный короткий URL: https://short.ly/kVxw3OA9
+Длина ID: 8 символов
+want:
+Оригинальный URL: https://example.com/very/long/path/to/resource
+Короткий ID: kJ8xN2mP
+Полный короткий URL: https://short.ly/kJ8xN2mP
+Длина ID: 8 символов
+--- FAIL: Example_serviceMultipleURLs (0.00s)
+got:
+Сокращение нескольких URL:
+1. https://github.com/golang/go -> http://localhost:8080/_kAd6Yu6
+2. https://pkg.go.dev/ -> http://localhost:8080/RVu1p31x
+3. https://golang.org/doc/ -> http://localhost:8080/kzeFBUi0
+want:
+Сокращение нескольких URL:
+1. https://github.com/golang/go -> http://localhost:8080/aB3dE5fG
+2. https://pkg.go.dev/ -> http://localhost:8080/hI7jK9lM
+3. https://golang.org/doc/ -> http://localhost:8080/nO1pQ3rS
+--- FAIL: Example_serviceDifferentBaseURLs (0.00s)
+got:
+Один URL с разными базовыми адресами:
+База: https://short.ly -> https://short.ly/bmeWJCRp
+База: http://localhost:8080 -> http://localhost:8080/3KgWtm8i
+База: https://my-domain.com -> https://my-domain.com/N5i8k_ag
+want:
+Один URL с разными базовыми адресами:
+База: https://short.ly -> https://short.ly/tU5vW7xY
+База: http://localhost:8080 -> http://localhost:8080/zA1bC3dE
+База: https://my-domain.com -> https://my-domain.com/fG5hI7jK
+--- FAIL: Example_serviceIDUniqueness (0.00s)
+got:
+Генерация ID для URL: https://test.com
+ID 1: Mad25XAL
+ID 2: Hr1oMDWk
+ID 3: 40uNf-xL
+ID 4: w1nExmaX
+ID 5: aDVG8-MZ
+Все ID уникальны: true
+want:
+Генерация ID для URL: https://test.com
+ID 1: mN3oP5qR
+ID 2: sT7uV9wX
+ID 3: yZ1aB3cD
+ID 4: eF5gH7iJ
+ID 5: kL9mN1oP
+Все ID уникальны: true
+FAIL
+coverage: [no statements]
+FAIL	github.com/Adigezalov/shortener/examples	0.389s
+	github.com/Adigezalov/shortener/internal/auth		coverage: 0.0% of statements
+	github.com/Adigezalov/shortener/internal/config		coverage: 0.0% of statements
+	github.com/Adigezalov/shortener/internal/database		coverage: 0.0% of statements
+ok  	github.com/Adigezalov/shortener/internal/handlers	0.595s	coverage: 72.0% of statements
+	github.com/Adigezalov/shortener/internal/logger		coverage: 0.0% of statements
+	github.com/Adigezalov/shortener/internal/middleware		coverage: 0.0% of statements
+?   	github.com/Adigezalov/shortener/internal/models	[no test files]
+	github.com/Adigezalov/shortener/internal/profiling		coverage: 0.0% of statements
+	github.com/Adigezalov/shortener/internal/shortener		coverage: 0.0% of statements
+	github.com/Adigezalov/shortener/internal/storage		coverage: 0.0% of statements
+FAIL
