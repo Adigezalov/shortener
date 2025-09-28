@@ -1,0 +1,26 @@
+// Example of code that violates the exitcheck analyzer
+// This file has .example extension to prevent it from being compiled
+
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+// This main function violates the exitcheck rule
+func main() {
+	fmt.Println("Starting application...")
+	
+	// This direct call to os.Exit will be caught by exitcheck analyzer
+	if someCondition() {
+		fmt.Println("Error occurred!")
+		os.Exit(1) // ❌ VIOLATION: direct os.Exit call in main function
+	}
+	
+	fmt.Println("Application finished successfully")
+}
+
+func someCondition() bool {
+	return true
+}

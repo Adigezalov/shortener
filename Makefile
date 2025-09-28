@@ -1,4 +1,17 @@
-.PHONY: build test benchmark profile clean fmt fmt-check lint check doc help
+.PHONY: build test benchmark profile clean fmt fmt-check lint check doc help deps staticlint staticlint-full
+
+# Установка зависимостей
+deps:
+	go mod download
+	go mod tidy
+	@echo "Installing development tools..."
+	@if ! command -v goimports >/dev/null 2>&1; then \
+		go install golang.org/x/tools/cmd/goimports@latest; \
+	fi
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+	fi
+	@echo "All dependencies installed successfully!"
 
 # Сборка приложения
 build:
@@ -58,8 +71,16 @@ lint:
 		go vet ./...; \
 	fi
 
+# Статический анализ с помощью multichecker (только production код)
+staticlint:
+	go run ./cmd/staticlint ./cmd/shortener ./internal/auth ./internal/config ./internal/database ./internal/handlers ./internal/logger ./internal/middleware ./internal/models ./internal/profiling ./internal/shortener ./internal/storage
+
+# Полный статический анализ (включая тесты)
+staticlint-full:
+	go run ./cmd/staticlint ./cmd/... ./internal/...
+
 # Комплексная проверка качества кода
-check: fmt-check lint test
+check: fmt-check lint staticlint test
 	@echo "All checks passed!"
 
 # Генерация документации
@@ -97,6 +118,7 @@ run-with-profiling:
 # Справка
 help:
 	@echo "Доступные команды:"
+	@echo "  deps               - Установить зависимости и инструменты разработки"
 	@echo "  build              - Собрать приложение"
 	@echo "  test               - Запустить тесты"
 	@echo "  benchmark          - Запустить бенчмарки"
@@ -107,7 +129,9 @@ help:
 	@echo "  fmt                - Форматировать код (gofmt + goimports)"
 	@echo "  fmt-check          - Проверить форматирование (для CI/CD)"
 	@echo "  lint               - Запустить линтер (golangci-lint или go vet)"
-	@echo "  check              - Комплексная проверка (форматирование + линтинг + тесты)"
+	@echo "  staticlint         - Запустить статический анализ (multichecker, только production код)"
+	@echo "  staticlint-full    - Запустить полный статический анализ (multichecker, включая тесты)"
+	@echo "  check              - Комплексная проверка (форматирование + линтинг + статический анализ + тесты)"
 	@echo "  doc                - Генерация и просмотр документации"
 	@echo "  clean              - Очистить профили и бинарники"
 	@echo "  help               - Показать эту справку"
