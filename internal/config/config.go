@@ -5,7 +5,9 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -20,14 +22,31 @@ const (
 	DefaultProfilesDir   = "benchmarks/profiles"   // Директория для профилей производительности
 	DefaultCertFile      = "cert.pem"              // Файл сертификата для HTTPS
 	DefaultKeyFile       = "key.pem"               // Файл приватного ключа для HTTPS
+	DefaultConfigFile    = ""                      // Файл конфигурации JSON (пустой = не используется)
 )
+
+// JSONConfig представляет структуру JSON файла конфигурации.
+// Все поля опциональны и используются только если заданы в файле.
+type JSONConfig struct {
+	ServerAddress    *string `json:"server_address,omitempty"`    // Адрес HTTP сервера
+	BaseURL          *string `json:"base_url,omitempty"`          // Базовый URL для коротких ссылок
+	FileStoragePath  *string `json:"file_storage_path,omitempty"` // Путь к файлу хранения URL
+	DatabaseDSN      *string `json:"database_dsn,omitempty"`      // DSN базы данных
+	ProfilingEnabled *bool   `json:"profiling_enabled,omitempty"` // Включить профилирование
+	ProfilingPort    *string `json:"profiling_port,omitempty"`    // Порт для pprof endpoints
+	ProfilesDir      *string `json:"profiles_dir,omitempty"`      // Директория для профилей
+	EnableHTTPS      *bool   `json:"enable_https,omitempty"`      // Включить HTTPS сервер
+	CertFile         *string `json:"cert_file,omitempty"`         // Путь к файлу сертификата
+	KeyFile          *string `json:"key_file,omitempty"`          // Путь к файлу приватного ключа
+}
 
 // Config содержит все конфигурационные параметры приложения.
 //
 // Конфигурация загружается в следующем порядке приоритета:
 //  1. Аргументы командной строки (высший приоритет)
 //  2. Переменные окружения
-//  3. Значения по умолчанию (низший приоритет)
+//  3. JSON файл конфигурации
+//  4. Значения по умолчанию (низший приоритет)
 //
 // Пример использования:
 //
@@ -93,6 +112,39 @@ type Config struct {
 	// Переменная окружения: KEY_FILE
 	// Флаг: -key
 	KeyFile string
+
+	// ConfigFile определяет путь к JSON файлу конфигурации.
+	// Переменная окружения: CONFIG
+	// Флаг: -c, -config
+	ConfigFile string
+}
+
+// loadJSONConfig загружает конфигурацию из JSON файла.
+// Возвращает nil если файл не существует или пустой путь.
+// Возвращает ошибку если файл существует но не может быть прочитан или распарсен.
+func loadJSONConfig(configPath string) (*JSONConfig, error) {
+	if configPath == "" {
+		return nil, nil
+	}
+
+	// Проверяем существование файла
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	// Читаем файл
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("не удалось прочитать файл конфигурации %s: %w", configPath, err)
+	}
+
+	// Парсим JSON
+	var jsonConfig JSONConfig
+	if err := json.Unmarshal(data, &jsonConfig); err != nil {
+		return nil, fmt.Errorf("не удалось распарсить JSON файл конфигурации %s: %w", configPath, err)
+	}
+
+	return &jsonConfig, nil
 }
 
 // NewConfig создает и инициализирует конфигурацию из переменных окружения и аргументов командной строки.
@@ -111,69 +163,132 @@ type Config struct {
 func NewConfig() *Config {
 	cfg := &Config{}
 
-	// Устанавливаем значения по умолчанию
-	serverAddress := DefaultServerAddress
-	baseURL := DefaultBaseURL
-	fileStoragePath := DefaultFileStorage
-	databaseDSN := DefaultDatabaseDSN
-	profilingEnabled := false
-	profilingPort := DefaultProfilingPort
-	profilesDir := DefaultProfilesDir
-	enableHTTPS := false
-	certFile := DefaultCertFile
-	keyFile := DefaultKeyFile
+	// Шаг 1: Устанавливаем значения по умолчанию
+	cfg.ServerAddress = DefaultServerAddress
+	cfg.BaseURL = DefaultBaseURL
+	cfg.FileStoragePath = DefaultFileStorage
+	cfg.DatabaseDSN = DefaultDatabaseDSN
+	cfg.ProfilingEnabled = false
+	cfg.ProfilingPort = DefaultProfilingPort
+	cfg.ProfilesDir = DefaultProfilesDir
+	cfg.EnableHTTPS = false
+	cfg.CertFile = DefaultCertFile
+	cfg.KeyFile = DefaultKeyFile
+	cfg.ConfigFile = DefaultConfigFile
 
-	// Проверяем переменные окружения
+	// Шаг 2: Применяем переменные окружения (включая путь к конфигурационному файлу)
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
-		serverAddress = envServerAddr
+		cfg.ServerAddress = envServerAddr
 	}
 	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
-		baseURL = envBaseURL
+		cfg.BaseURL = envBaseURL
 	}
 	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
-		fileStoragePath = envFileStoragePath
+		cfg.FileStoragePath = envFileStoragePath
 	}
 	if envDatabaseDSN := os.Getenv("DATABASE_DSN"); envDatabaseDSN != "" {
-		databaseDSN = envDatabaseDSN
+		cfg.DatabaseDSN = envDatabaseDSN
 	}
 	if envProfilingEnabled := os.Getenv("PROFILING_ENABLED"); envProfilingEnabled == "true" {
-		profilingEnabled = true
+		cfg.ProfilingEnabled = true
+	} else if envProfilingEnabled == "false" {
+		cfg.ProfilingEnabled = false
 	}
 	if envProfilingPort := os.Getenv("PROFILING_PORT"); envProfilingPort != "" {
-		profilingPort = envProfilingPort
+		cfg.ProfilingPort = envProfilingPort
 	}
 	if envProfilesDir := os.Getenv("PROFILES_DIR"); envProfilesDir != "" {
-		profilesDir = envProfilesDir
+		cfg.ProfilesDir = envProfilesDir
 	}
 	if envEnableHTTPS := os.Getenv("ENABLE_HTTPS"); envEnableHTTPS == "true" {
-		enableHTTPS = true
+		cfg.EnableHTTPS = true
+	} else if envEnableHTTPS == "false" {
+		cfg.EnableHTTPS = false
 	}
 	if envCertFile := os.Getenv("CERT_FILE"); envCertFile != "" {
-		certFile = envCertFile
+		cfg.CertFile = envCertFile
 	}
 	if envKeyFile := os.Getenv("KEY_FILE"); envKeyFile != "" {
-		keyFile = envKeyFile
+		cfg.KeyFile = envKeyFile
+	}
+	if envConfigFile := os.Getenv("CONFIG"); envConfigFile != "" {
+		cfg.ConfigFile = envConfigFile
 	}
 
-	// Регистрируем флаги командной строки
-	flag.StringVar(&cfg.ServerAddress, "a", serverAddress, "адрес запуска HTTP-сервера")
-	flag.StringVar(&cfg.BaseURL, "b", baseURL, "базовый адрес для сокращенных URL")
-	flag.StringVar(&cfg.FileStoragePath, "f", fileStoragePath, "путь к файлу хранения URL")
-	flag.StringVar(&cfg.DatabaseDSN, "d", databaseDSN, "строка подключения к PostgreSQL")
-	flag.BoolVar(&cfg.ProfilingEnabled, "profiling", profilingEnabled, "включить профилирование")
-	flag.StringVar(&cfg.ProfilingPort, "profiling-port", profilingPort, "порт для pprof endpoints")
-	flag.StringVar(&cfg.ProfilesDir, "profiles-dir", profilesDir, "директория для сохранения профилей")
-	flag.BoolVar(&cfg.EnableHTTPS, "s", enableHTTPS, "включить HTTPS сервер")
-	flag.StringVar(&cfg.CertFile, "cert", certFile, "путь к файлу сертификата для HTTPS")
-	flag.StringVar(&cfg.KeyFile, "key", keyFile, "путь к файлу приватного ключа для HTTPS")
+	// Шаг 3: Регистрируем флаги командной строки
+	flag.StringVar(&cfg.ServerAddress, "a", cfg.ServerAddress, "адрес запуска HTTP-сервера")
+	flag.StringVar(&cfg.BaseURL, "b", cfg.BaseURL, "базовый адрес для сокращенных URL")
+	flag.StringVar(&cfg.FileStoragePath, "f", cfg.FileStoragePath, "путь к файлу хранения URL")
+	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "строка подключения к PostgreSQL")
+	flag.BoolVar(&cfg.ProfilingEnabled, "profiling", cfg.ProfilingEnabled, "включить профилирование")
+	flag.StringVar(&cfg.ProfilingPort, "profiling-port", cfg.ProfilingPort, "порт для pprof endpoints")
+	flag.StringVar(&cfg.ProfilesDir, "profiles-dir", cfg.ProfilesDir, "директория для сохранения профилей")
+	flag.BoolVar(&cfg.EnableHTTPS, "s", cfg.EnableHTTPS, "включить HTTPS сервер")
+	flag.StringVar(&cfg.CertFile, "cert", cfg.CertFile, "путь к файлу сертификата для HTTPS")
+	flag.StringVar(&cfg.KeyFile, "key", cfg.KeyFile, "путь к файлу приватного ключа для HTTPS")
+	flag.StringVar(&cfg.ConfigFile, "c", cfg.ConfigFile, "путь к JSON файлу конфигурации")
+	flag.StringVar(&cfg.ConfigFile, "config", cfg.ConfigFile, "путь к JSON файлу конфигурации")
 
-	// Разбираем флаги
+	// Шаг 4: Парсим флаги командной строки
 	flag.Parse()
+
+	// Шаг 5: Загружаем JSON конфигурацию и применяем её значения
+	// (только если они не были переопределены флагами или переменными окружения)
+	jsonConfig, err := loadJSONConfig(cfg.ConfigFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Ошибка загрузки конфигурации: %v\n", err)
+		os.Exit(1)
+	}
+
+	if jsonConfig != nil {
+		// Применяем значения из JSON только если они не были установлены через флаги или переменные окружения
+		if jsonConfig.ServerAddress != nil && !isFlagSet("a") && os.Getenv("SERVER_ADDRESS") == "" {
+			cfg.ServerAddress = *jsonConfig.ServerAddress
+		}
+		if jsonConfig.BaseURL != nil && !isFlagSet("b") && os.Getenv("BASE_URL") == "" {
+			cfg.BaseURL = *jsonConfig.BaseURL
+		}
+		if jsonConfig.FileStoragePath != nil && !isFlagSet("f") && os.Getenv("FILE_STORAGE_PATH") == "" {
+			cfg.FileStoragePath = *jsonConfig.FileStoragePath
+		}
+		if jsonConfig.DatabaseDSN != nil && !isFlagSet("d") && os.Getenv("DATABASE_DSN") == "" {
+			cfg.DatabaseDSN = *jsonConfig.DatabaseDSN
+		}
+		if jsonConfig.ProfilingEnabled != nil && !isFlagSet("profiling") && os.Getenv("PROFILING_ENABLED") == "" {
+			cfg.ProfilingEnabled = *jsonConfig.ProfilingEnabled
+		}
+		if jsonConfig.ProfilingPort != nil && !isFlagSet("profiling-port") && os.Getenv("PROFILING_PORT") == "" {
+			cfg.ProfilingPort = *jsonConfig.ProfilingPort
+		}
+		if jsonConfig.ProfilesDir != nil && !isFlagSet("profiles-dir") && os.Getenv("PROFILES_DIR") == "" {
+			cfg.ProfilesDir = *jsonConfig.ProfilesDir
+		}
+		if jsonConfig.EnableHTTPS != nil && !isFlagSet("s") && os.Getenv("ENABLE_HTTPS") == "" {
+			cfg.EnableHTTPS = *jsonConfig.EnableHTTPS
+		}
+		if jsonConfig.CertFile != nil && !isFlagSet("cert") && os.Getenv("CERT_FILE") == "" {
+			cfg.CertFile = *jsonConfig.CertFile
+		}
+		if jsonConfig.KeyFile != nil && !isFlagSet("key") && os.Getenv("KEY_FILE") == "" {
+			cfg.KeyFile = *jsonConfig.KeyFile
+		}
+	}
 
 	// Валидируем и нормализуем конфигурацию
 	cfg.normalize()
 
 	return cfg
+}
+
+// isFlagSet проверяет, был ли установлен флаг командной строки
+func isFlagSet(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
 
 // normalize выполняет нормализацию и валидацию параметров конфигурации
