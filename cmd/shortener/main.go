@@ -131,9 +131,19 @@ func main() {
 			zap.String("database_dsn", cfg.DatabaseDSN),
 			zap.Bool("profiling_enabled", cfg.ProfilingEnabled),
 			zap.String("profiling_port", cfg.ProfilingPort),
+			zap.Bool("https_enabled", cfg.EnableHTTPS),
+			zap.String("cert_file", cfg.CertFile),
+			zap.String("key_file", cfg.KeyFile),
 		)
 
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		var err error
+		if cfg.EnableHTTPS {
+			err = srv.ListenAndServeTLS(cfg.CertFile, cfg.KeyFile)
+		} else {
+			err = srv.ListenAndServe()
+		}
+
+		if err != nil && err != http.ErrServerClosed {
 			logger.Logger.Fatal("Ошибка запуска сервера", zap.Error(err))
 		}
 	}()

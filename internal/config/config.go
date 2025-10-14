@@ -18,6 +18,8 @@ const (
 	DefaultDatabaseDSN   = ""                      // DSN базы данных (пустой = не используется)
 	DefaultProfilingPort = ":6060"                 // Порт для pprof endpoints
 	DefaultProfilesDir   = "benchmarks/profiles"   // Директория для профилей производительности
+	DefaultCertFile      = "cert.pem"              // Файл сертификата для HTTPS
+	DefaultKeyFile       = "key.pem"               // Файл приватного ключа для HTTPS
 )
 
 // Config содержит все конфигурационные параметры приложения.
@@ -75,6 +77,22 @@ type Config struct {
 	// Переменная окружения: PROFILES_DIR
 	// Флаг: -profiles-dir
 	ProfilesDir string
+
+	// EnableHTTPS включает или выключает HTTPS сервер.
+	// При включении сервер запускается с помощью ListenAndServeTLS.
+	// Переменная окружения: ENABLE_HTTPS (true/false)
+	// Флаг: -s
+	EnableHTTPS bool
+
+	// CertFile определяет путь к файлу сертификата для HTTPS.
+	// Переменная окружения: CERT_FILE
+	// Флаг: -cert
+	CertFile string
+
+	// KeyFile определяет путь к файлу приватного ключа для HTTPS.
+	// Переменная окружения: KEY_FILE
+	// Флаг: -key
+	KeyFile string
 }
 
 // NewConfig создает и инициализирует конфигурацию из переменных окружения и аргументов командной строки.
@@ -101,6 +119,9 @@ func NewConfig() *Config {
 	profilingEnabled := false
 	profilingPort := DefaultProfilingPort
 	profilesDir := DefaultProfilesDir
+	enableHTTPS := false
+	certFile := DefaultCertFile
+	keyFile := DefaultKeyFile
 
 	// Проверяем переменные окружения
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
@@ -124,6 +145,15 @@ func NewConfig() *Config {
 	if envProfilesDir := os.Getenv("PROFILES_DIR"); envProfilesDir != "" {
 		profilesDir = envProfilesDir
 	}
+	if envEnableHTTPS := os.Getenv("ENABLE_HTTPS"); envEnableHTTPS == "true" {
+		enableHTTPS = true
+	}
+	if envCertFile := os.Getenv("CERT_FILE"); envCertFile != "" {
+		certFile = envCertFile
+	}
+	if envKeyFile := os.Getenv("KEY_FILE"); envKeyFile != "" {
+		keyFile = envKeyFile
+	}
 
 	// Регистрируем флаги командной строки
 	flag.StringVar(&cfg.ServerAddress, "a", serverAddress, "адрес запуска HTTP-сервера")
@@ -133,6 +163,9 @@ func NewConfig() *Config {
 	flag.BoolVar(&cfg.ProfilingEnabled, "profiling", profilingEnabled, "включить профилирование")
 	flag.StringVar(&cfg.ProfilingPort, "profiling-port", profilingPort, "порт для pprof endpoints")
 	flag.StringVar(&cfg.ProfilesDir, "profiles-dir", profilesDir, "директория для сохранения профилей")
+	flag.BoolVar(&cfg.EnableHTTPS, "s", enableHTTPS, "включить HTTPS сервер")
+	flag.StringVar(&cfg.CertFile, "cert", certFile, "путь к файлу сертификата для HTTPS")
+	flag.StringVar(&cfg.KeyFile, "key", keyFile, "путь к файлу приватного ключа для HTTPS")
 
 	// Разбираем флаги
 	flag.Parse()
@@ -148,8 +181,17 @@ func (c *Config) normalize() {
 	// Убеждаемся, что BaseURL не заканчивается слешем
 	c.BaseURL = strings.TrimSuffix(c.BaseURL, "/")
 
-	// Если в BaseURL не указан протокол, добавляем http://
+	// Если в BaseURL не указан протокол, добавляем соответствующий протокол
 	if !strings.HasPrefix(c.BaseURL, "http://") && !strings.HasPrefix(c.BaseURL, "https://") {
-		c.BaseURL = "http://" + c.BaseURL
+		if c.EnableHTTPS {
+			c.BaseURL = "https://" + c.BaseURL
+		} else {
+			c.BaseURL = "http://" + c.BaseURL
+		}
+	}
+
+	// Если включен HTTPS, но BaseURL использует HTTP, обновляем протокол
+	if c.EnableHTTPS && strings.HasPrefix(c.BaseURL, "http://") {
+		c.BaseURL = strings.Replace(c.BaseURL, "http://", "https://", 1)
 	}
 }
