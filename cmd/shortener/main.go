@@ -53,11 +53,6 @@ func main() {
 		if err := profilingServer.Start(); err != nil {
 			logger.Logger.Error("Ошибка запуска сервера профилирования", zap.Error(err))
 		}
-		defer func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			profilingServer.Stop(ctx)
-		}()
 	}
 
 	// Инициализируем хранилище URL с помощью фабрики
@@ -65,7 +60,6 @@ func main() {
 	if err != nil {
 		logger.Logger.Fatal("Ошибка инициализации хранилища", zap.Error(err))
 	}
-	defer store.Close()
 
 	// Инициализируем подключение к базе данных для хендлера /ping
 	var dbInterface handlers.Pinger
@@ -75,7 +69,6 @@ func main() {
 			logger.Logger.Fatal("Ошибка подключения к базе данных", zap.Error(err))
 		}
 		dbInterface = db
-		defer db.Close()
 	} else {
 		// Если база данных не настроена, передаем nil
 		dbInterface = nil
@@ -120,7 +113,7 @@ func main() {
 
 	// Канал для получения сигналов OS
 	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
 	// Запускаем сервер в отдельной горутине
 	go func() {
@@ -131,24 +124,73 @@ func main() {
 			zap.String("database_dsn", cfg.DatabaseDSN),
 			zap.Bool("profiling_enabled", cfg.ProfilingEnabled),
 			zap.String("profiling_port", cfg.ProfilingPort),
+			zap.Bool("https_enabled", cfg.EnableHTTPS),
+			zap.String("cert_file", cfg.CertFile),
+			zap.String("key_file", cfg.KeyFile),
 		)
 
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		var err error
+		if cfg.EnableHTTPS {
+			err = srv.ListenAndServeTLS(cfg.CertFile, cfg.KeyFile)
+		} else {
+			err = srv.ListenAndServe()
+		}
+
+		if err != nil && err != http.ErrServerClosed {
 			logger.Logger.Fatal("Ошибка запуска сервера", zap.Error(err))
 		}
 	}()
 
 	// Ожидаем сигнал завершения
-	<-stop
+	sig := <-stop
 
-	logger.Logger.Info("Завершение работы сервера...")
+	logger.Logger.Info("Получен сигнал завершения работы",
+		zap.String("signal", sig.String()))
 
 	// Создаем контекст с таймаутом для корректного завершения
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
 
-	// Завершаем работу сервера
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Logger.Error("Ошибка при завершении работы сервера", zap.Error(err))
+	logger.Logger.Info("Начинаем корректное завершение работы сервера...")
+
+	// Завершаем работу основного HTTP сервера
+	// Это позволит завершить обработку всех активных запросов
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.Logger.Error("Ошибка при завершении работы HTTP сервера", zap.Error(err))
+	} else {
+		logger.Logger.Info("HTTP сервер корректно завершил работу")
 	}
+
+	// Завершаем работу сервера профилирования, если он запущен
+	if profilingServer != nil {
+		profilingCtx, profilingCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer profilingCancel()
+
+		if err := profilingServer.Stop(profilingCtx); err != nil {
+			logger.Logger.Error("Ошибка при завершении работы сервера профилирования", zap.Error(err))
+		} else {
+			logger.Logger.Info("Сервер профилирования корректно завершил работу")
+		}
+	}
+
+	// Закрываем хранилище для сохранения всех данных
+	logger.Logger.Info("Сохраняем данные в хранилище...")
+	if err := store.Close(); err != nil {
+		logger.Logger.Error("Ошибка при закрытии хранилища", zap.Error(err))
+	} else {
+		logger.Logger.Info("Хранилище корректно закрыто, все данные сохранены")
+	}
+
+	// Закрываем подключение к базе данных, если оно есть
+	if dbInterface != nil {
+		if closer, ok := dbInterface.(interface{ Close() error }); ok {
+			if err := closer.Close(); err != nil {
+				logger.Logger.Error("Ошибка при закрытии подключения к базе данных", zap.Error(err))
+			} else {
+				logger.Logger.Info("Подключение к базе данных корректно закрыто")
+			}
+		}
+	}
+
+	logger.Logger.Info("Сервер корректно завершил работу")
 }
