@@ -2,6 +2,12 @@ package storage
 
 import "github.com/Adigezalov/shortener/internal/models"
 
+// Stats представляет статистику хранилища
+type Stats struct {
+	URLs  int // Количество сокращённых URL в сервисе
+	Users int // Количество пользователей в сервисе
+}
+
 // URLStorage интерфейс для хранения URL
 type URLStorage interface {
 	// Add добавляет новый URL в хранилище
@@ -26,6 +32,9 @@ type URLStorage interface {
 
 	// IsDeleted проверяет, помечен ли URL как удаленный
 	IsDeleted(shortURL string) (bool, error)
+
+	// Stats возвращает статистику хранилища
+	Stats() (Stats, error)
 
 	// Close закрывает хранилище и освобождает ресурсы
 	Close() error

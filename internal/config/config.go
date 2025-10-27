@@ -38,6 +38,7 @@ type JSONConfig struct {
 	EnableHTTPS      *bool   `json:"enable_https,omitempty"`      // Включить HTTPS сервер
 	CertFile         *string `json:"cert_file,omitempty"`         // Путь к файлу сертификата
 	KeyFile          *string `json:"key_file,omitempty"`          // Путь к файлу приватного ключа
+	TrustedSubnet    *string `json:"trusted_subnet,omitempty"`    // Доверенная подсеть CIDR
 }
 
 // Config содержит все конфигурационные параметры приложения.
@@ -117,6 +118,11 @@ type Config struct {
 	// Переменная окружения: CONFIG
 	// Флаг: -c, -config
 	ConfigFile string
+
+	// TrustedSubnet определяет доверенную подсеть CIDR для доступа к внутренним эндпоинтам.
+	// Переменная окружения: TRUSTED_SUBNET
+	// Флаг: -t
+	TrustedSubnet string
 }
 
 // loadJSONConfig загружает конфигурацию из JSON файла.
@@ -175,6 +181,7 @@ func NewConfig() *Config {
 	cfg.CertFile = DefaultCertFile
 	cfg.KeyFile = DefaultKeyFile
 	cfg.ConfigFile = DefaultConfigFile
+	cfg.TrustedSubnet = ""
 
 	// Шаг 2: Применяем переменные окружения (включая путь к конфигурационному файлу)
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
@@ -214,6 +221,9 @@ func NewConfig() *Config {
 	if envConfigFile := os.Getenv("CONFIG"); envConfigFile != "" {
 		cfg.ConfigFile = envConfigFile
 	}
+	if envTrustedSubnet := os.Getenv("TRUSTED_SUBNET"); envTrustedSubnet != "" {
+		cfg.TrustedSubnet = envTrustedSubnet
+	}
 
 	// Шаг 3: Регистрируем флаги командной строки
 	flag.StringVar(&cfg.ServerAddress, "a", cfg.ServerAddress, "адрес запуска HTTP-сервера")
@@ -228,6 +238,7 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.KeyFile, "key", cfg.KeyFile, "путь к файлу приватного ключа для HTTPS")
 	flag.StringVar(&cfg.ConfigFile, "c", cfg.ConfigFile, "путь к JSON файлу конфигурации")
 	flag.StringVar(&cfg.ConfigFile, "config", cfg.ConfigFile, "путь к JSON файлу конфигурации")
+	flag.StringVar(&cfg.TrustedSubnet, "t", cfg.TrustedSubnet, "доверенная подсеть CIDR")
 
 	// Шаг 4: Парсим флаги командной строки
 	flag.Parse()
@@ -271,6 +282,9 @@ func NewConfig() *Config {
 		}
 		if jsonConfig.KeyFile != nil && !isFlagSet("key") && os.Getenv("KEY_FILE") == "" {
 			cfg.KeyFile = *jsonConfig.KeyFile
+		}
+		if jsonConfig.TrustedSubnet != nil && !isFlagSet("t") && os.Getenv("TRUSTED_SUBNET") == "" {
+			cfg.TrustedSubnet = *jsonConfig.TrustedSubnet
 		}
 	}
 

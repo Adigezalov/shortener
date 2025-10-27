@@ -105,6 +105,9 @@ func main() {
 		r.Delete("/urls", handler.DeleteUserURLs)
 	})
 
+	// Маршрут для внутренней статистики с проверкой IP
+	r.Get("/api/internal/stats", customMiddleware.IPAuthMiddleware(cfg.TrustedSubnet)(http.HandlerFunc(handler.GetStats)).ServeHTTP)
+
 	// Настраиваем HTTP-сервер
 	srv := &http.Server{
 		Addr:    cfg.ServerAddress,
@@ -127,6 +130,7 @@ func main() {
 			zap.Bool("https_enabled", cfg.EnableHTTPS),
 			zap.String("cert_file", cfg.CertFile),
 			zap.String("key_file", cfg.KeyFile),
+			zap.String("trusted_subnet", cfg.TrustedSubnet),
 		)
 
 		var err error

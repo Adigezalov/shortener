@@ -9,7 +9,10 @@
 //   - Проверка состояния БД (GET /ping)
 package handlers
 
-import "github.com/Adigezalov/shortener/internal/models"
+import (
+	"github.com/Adigezalov/shortener/internal/models"
+	"github.com/Adigezalov/shortener/internal/storage"
+)
 
 // URLStorage определяет интерфейс для хранения и управления URL.
 //
@@ -40,6 +43,9 @@ type URLStorage interface {
 
 	// IsDeleted проверяет, помечен ли URL как удаленный.
 	IsDeleted(shortURL string) (bool, error)
+
+	// Stats возвращает статистику хранилища.
+	Stats() (storage.Stats, error)
 
 	// Close закрывает хранилище и освобождает ресурсы.
 	Close() error
