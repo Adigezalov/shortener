@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/Adigezalov/shortener/internal/models"
+	"github.com/Adigezalov/shortener/internal/storage"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -48,6 +49,11 @@ func (m *MockURLStorage) DeleteUserURLs(userID string, shortURLs []string) error
 func (m *MockURLStorage) IsDeleted(shortURL string) (bool, error) {
 	args := m.Called(shortURL)
 	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockURLStorage) Stats() (storage.Stats, error) {
+	args := m.Called()
+	return args.Get(0).(storage.Stats), args.Error(1)
 }
 
 // MockURLShortener - мок для интерфейса сокращения URL

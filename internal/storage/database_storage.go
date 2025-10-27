@@ -198,6 +198,32 @@ func (s *DatabaseStorage) IsDeleted(shortURL string) (bool, error) {
 	return isDeleted, nil
 }
 
+// Stats возвращает статистику хранилища
+func (s *DatabaseStorage) Stats() (Stats, error) {
+	var urlsCount, usersCount int
+
+	// Подсчитываем количество URL
+	err := s.db.QueryRow(`
+		SELECT COUNT(*)
+		FROM urls
+	`).Scan(&urlsCount)
+	if err != nil {
+		return Stats{}, err
+	}
+
+	// Подсчитываем количество уникальных пользователей
+	err = s.db.QueryRow(`
+		SELECT COUNT(DISTINCT user_id)
+		FROM urls
+		WHERE user_id IS NOT NULL
+	`).Scan(&usersCount)
+	if err != nil {
+		return Stats{}, err
+	}
+
+	return Stats{URLs: urlsCount, Users: usersCount}, nil
+}
+
 // Close закрывает соединение с базой данных
 func (s *DatabaseStorage) Close() error {
 	return nil // DB закрывается на уровне приложения

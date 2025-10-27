@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package shortener;
+
+option go_package = "github.com/Adigezalov/shortener/pkg/proto";
+
+// ShortenerService предоставляет методы для работы с сокращением URL
+service ShortenerService {
+  // Создать короткий URL из текста
+  rpc CreateShortURL(CreateShortURLRequest) returns (CreateShortURLResponse);
+  
+  // Сократить URL (JSON API аналог)
+  rpc ShortenURL(ShortenURLRequest) returns (ShortenURLResponse);
+  
+  // Пакетное сокращение URL
+  rpc ShortenBatch(ShortenBatchRequest) returns (ShortenBatchResponse);
+  
+  // Получить оригинальный URL по короткому ID
+  rpc GetOriginalURL(GetOriginalURLRequest) returns (GetOriginalURLResponse);
+  
+  // Получить все URL пользователя
+  rpc GetUserURLs(GetUserURLsRequest) returns (GetUserURLsResponse);
+  
+  // Удалить URL пользователя
+  rpc DeleteUserURLs(DeleteUserURLsRequest) returns (DeleteUserURLsResponse);
+  
+  // Проверить состояние базы данных
+  rpc Ping(PingRequest) returns (PingResponse);
+  
+  // Получить статистику сервиса
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+}
+
+// CreateShortURLRequest - запрос на создание короткого URL из текста
+message CreateShortURLRequest {
+  string url = 1; // Оригинальный URL
+}
+
+// CreateShortURLResponse - ответ с коротким URL
+message CreateShortURLResponse {
+  string short_url = 1; // Короткий URL
+  bool conflict = 2;     // URL уже существует
+}
+
+// ShortenURLRequest - запрос на сокращение URL
+message ShortenURLRequest {
+  string url = 1; // Оригинальный URL
+}
+
+// ShortenURLResponse - ответ с сокращенным URL
+message ShortenURLResponse {
+  string result = 1;  // Короткий URL
+  bool conflict = 2;  // URL уже существует
+}
+
+// BatchShortenItem - элемент пакетного запроса
+message BatchShortenItem {
+  string correlation_id = 1; // Идентификатор для связи
+  string original_url = 2;   // Оригинальный URL
+}
+
+// BatchShortenResultItem - элемент пакетного ответа
+message BatchShortenResultItem {
+  string correlation_id = 1; // Идентификатор из запроса
+  string short_url = 2;      // Короткий URL
+}
+
+// ShortenBatchRequest - запрос на пакетное сокращение
+message ShortenBatchRequest {
+  repeated BatchShortenItem items = 1; // Список URL для сокращения
+}
+
+// ShortenBatchResponse - ответ на пакетное сокращение
+message ShortenBatchResponse {
+  repeated BatchShortenResultItem items = 1; // Список результатов
+}
+
+// GetOriginalURLRequest - запрос на получение оригинального URL
+message GetOriginalURLRequest {
+  string id = 1; // Короткий ID
+}
+
+// GetOriginalURLResponse - ответ с оригинальным URL
+message GetOriginalURLResponse {
+  string original_url = 1; // Оригинальный URL
+  bool deleted = 2;        // URL удален
+}
+
+// UserURLItem - элемент списка URL пользователя
+message UserURLItem {
+  string short_url = 1;    // Короткий URL
+  string original_url = 2; // Оригинальный URL
+}
+
+// GetUserURLsRequest - запрос на получение URL пользователя
+message GetUserURLsRequest {
+  // Пустой, user_id берется из метаданных (JWT токена)
+}
+
+// GetUserURLsResponse - ответ со списком URL пользователя
+message GetUserURLsResponse {
+  repeated UserURLItem urls = 1; // Список URL пользователя
+}
+
+// DeleteUserURLsRequest - запрос на удаление URL пользователя
+message DeleteUserURLsRequest {
+  repeated string short_urls = 1; // Список коротких ID для удаления
+}
+
+// DeleteUserURLsResponse - ответ на удаление URL
+message DeleteUserURLsResponse {
+  bool accepted = 1; // Запрос принят
+}
+
+// PingRequest - запрос проверки состояния БД
+message PingRequest {
+  // Пустой запрос
+}
+
+// PingResponse - ответ проверки состояния БД
+message PingResponse {
+  bool ok = 1; // База данных доступна
+}
+
+// GetStatsRequest - запрос статистики
+message GetStatsRequest {
+  // Пустой запрос (требуется доверенный IP)
+}
+
+// GetStatsResponse - ответ со статистикой
+message GetStatsResponse {
+  int32 urls = 1;  // Количество URL
+  int32 users = 2; // Количество пользователей
+}
+
