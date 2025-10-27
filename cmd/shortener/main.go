@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,16 +13,21 @@ import (
 
 	"github.com/Adigezalov/shortener/internal/config"
 	"github.com/Adigezalov/shortener/internal/database"
+	"github.com/Adigezalov/shortener/internal/grpcserver"
 	"github.com/Adigezalov/shortener/internal/handlers"
 	"github.com/Adigezalov/shortener/internal/logger"
 	customMiddleware "github.com/Adigezalov/shortener/internal/middleware"
 	"github.com/Adigezalov/shortener/internal/profiling"
+	"github.com/Adigezalov/shortener/internal/service"
 	"github.com/Adigezalov/shortener/internal/shortener"
 	"github.com/Adigezalov/shortener/internal/storage"
+	pb "github.com/Adigezalov/shortener/pkg/proto"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // Глобальные переменные для информации о сборке.
@@ -80,6 +86,9 @@ func main() {
 	// Инициализируем обработчик HTTP запросов
 	handler := handlers.New(store, shortenerService, dbInterface)
 
+	// Создаем service слой для gRPC
+	svc := service.NewShortenerService(store, shortenerService, dbInterface)
+
 	// Создаем новый роутер chi
 	r := chi.NewRouter()
 
@@ -114,13 +123,55 @@ func main() {
 		Handler: r,
 	}
 
+	// Настраиваем gRPC-сервер (если включен)
+	var grpcSrv *grpc.Server
+	var grpcListener net.Listener
+	if cfg.EnableGRPC {
+		// Создаем gRPC сервер
+		grpcServer := grpcserver.NewServer(svc)
+
+		// Настраиваем interceptors
+		opts := []grpc.ServerOption{
+			grpc.ChainUnaryInterceptor(
+				grpcserver.RecoveryInterceptor(),
+				grpcserver.LoggingInterceptor(),
+				grpcserver.AuthInterceptor(),
+				grpcserver.IPAuthInterceptor(cfg.TrustedSubnet),
+			),
+		}
+
+		// Если есть сертификаты для gRPC TLS, используем их
+		if cfg.GRPCCertFile != "" && cfg.GRPCKeyFile != "" {
+			creds, err := credentials.NewServerTLSFromFile(cfg.GRPCCertFile, cfg.GRPCKeyFile)
+			if err != nil {
+				logger.Logger.Fatal("Ошибка загрузки gRPC TLS сертификатов", zap.Error(err))
+			}
+			opts = append(opts, grpc.Creds(creds))
+			logger.Logger.Info("gRPC TLS включен")
+		}
+
+		grpcSrv = grpc.NewServer(opts...)
+		pb.RegisterShortenerServiceServer(grpcSrv, grpcServer)
+
+		// Создаем listener для gRPC
+		var err error
+		grpcListener, err = net.Listen("tcp", cfg.GRPCAddress)
+		if err != nil {
+			logger.Logger.Fatal("Ошибка создания gRPC listener", zap.Error(err))
+		}
+
+		logger.Logger.Info("gRPC сервер настроен",
+			zap.String("address", cfg.GRPCAddress),
+			zap.Bool("tls_enabled", cfg.GRPCCertFile != "" && cfg.GRPCKeyFile != ""))
+	}
+
 	// Канал для получения сигналов OS
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
-	// Запускаем сервер в отдельной горутине
+	// Запускаем HTTP сервер в отдельной горутине
 	go func() {
-		logger.Logger.Info("Сервер запущен",
+		logger.Logger.Info("HTTP сервер запущен",
 			zap.String("address", cfg.ServerAddress),
 			zap.String("base_url", cfg.BaseURL),
 			zap.String("storage_path", cfg.FileStoragePath),
@@ -131,6 +182,8 @@ func main() {
 			zap.String("cert_file", cfg.CertFile),
 			zap.String("key_file", cfg.KeyFile),
 			zap.String("trusted_subnet", cfg.TrustedSubnet),
+			zap.Bool("grpc_enabled", cfg.EnableGRPC),
+			zap.String("grpc_address", cfg.GRPCAddress),
 		)
 
 		var err error
@@ -141,9 +194,21 @@ func main() {
 		}
 
 		if err != nil && err != http.ErrServerClosed {
-			logger.Logger.Fatal("Ошибка запуска сервера", zap.Error(err))
+			logger.Logger.Fatal("Ошибка запуска HTTP сервера", zap.Error(err))
 		}
 	}()
+
+	// Запускаем gRPC сервер в отдельной горутине (если включен)
+	if cfg.EnableGRPC && grpcSrv != nil && grpcListener != nil {
+		go func() {
+			logger.Logger.Info("gRPC сервер запущен",
+				zap.String("address", cfg.GRPCAddress))
+
+			if err := grpcSrv.Serve(grpcListener); err != nil {
+				logger.Logger.Fatal("Ошибка запуска gRPC сервера", zap.Error(err))
+			}
+		}()
+	}
 
 	// Ожидаем сигнал завершения
 	sig := <-stop
@@ -155,7 +220,14 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 
-	logger.Logger.Info("Начинаем корректное завершение работы сервера...")
+	logger.Logger.Info("Начинаем корректное завершение работы серверов...")
+
+	// Завершаем работу gRPC сервера (если он запущен)
+	if cfg.EnableGRPC && grpcSrv != nil {
+		logger.Logger.Info("Останавливаем gRPC сервер...")
+		grpcSrv.GracefulStop()
+		logger.Logger.Info("gRPC сервер корректно завершил работу")
+	}
 
 	// Завершаем работу основного HTTP сервера
 	// Это позволит завершить обработку всех активных запросов
@@ -196,5 +268,5 @@ func main() {
 		}
 	}
 
-	logger.Logger.Info("Сервер корректно завершил работу")
+	logger.Logger.Info("Все серверы корректно завершили работу")
 }

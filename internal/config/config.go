@@ -23,6 +23,9 @@ const (
 	DefaultCertFile      = "cert.pem"              // Файл сертификата для HTTPS
 	DefaultKeyFile       = "key.pem"               // Файл приватного ключа для HTTPS
 	DefaultConfigFile    = ""                      // Файл конфигурации JSON (пустой = не используется)
+	DefaultGRPCAddress   = ":3200"                 // Адрес gRPC сервера по умолчанию
+	DefaultGRPCCertFile  = "grpc_cert.pem"         // Файл сертификата для gRPC TLS
+	DefaultGRPCKeyFile   = "grpc_key.pem"          // Файл приватного ключа для gRPC TLS
 )
 
 // JSONConfig представляет структуру JSON файла конфигурации.
@@ -39,6 +42,10 @@ type JSONConfig struct {
 	CertFile         *string `json:"cert_file,omitempty"`         // Путь к файлу сертификата
 	KeyFile          *string `json:"key_file,omitempty"`          // Путь к файлу приватного ключа
 	TrustedSubnet    *string `json:"trusted_subnet,omitempty"`    // Доверенная подсеть CIDR
+	EnableGRPC       *bool   `json:"enable_grpc,omitempty"`       // Включить gRPC сервер
+	GRPCAddress      *string `json:"grpc_address,omitempty"`      // Адрес gRPC сервера
+	GRPCCertFile     *string `json:"grpc_cert_file,omitempty"`    // Путь к файлу сертификата для gRPC
+	GRPCKeyFile      *string `json:"grpc_key_file,omitempty"`     // Путь к файлу приватного ключа для gRPC
 }
 
 // Config содержит все конфигурационные параметры приложения.
@@ -123,6 +130,28 @@ type Config struct {
 	// Переменная окружения: TRUSTED_SUBNET
 	// Флаг: -t
 	TrustedSubnet string
+
+	// EnableGRPC включает или выключает gRPC сервер.
+	// При включении запускается gRPC сервер на GRPCAddress.
+	// Переменная окружения: ENABLE_GRPC (true/false)
+	// Флаг: -g
+	EnableGRPC bool
+
+	// GRPCAddress определяет адрес и порт для запуска gRPC-сервера.
+	// Формат: ":3200" или "localhost:3200"
+	// Переменная окружения: GRPC_ADDRESS
+	// Флаг: -grpc-address
+	GRPCAddress string
+
+	// GRPCCertFile определяет путь к файлу сертификата для gRPC TLS.
+	// Переменная окружения: GRPC_CERT_FILE
+	// Флаг: -grpc-cert
+	GRPCCertFile string
+
+	// GRPCKeyFile определяет путь к файлу приватного ключа для gRPC TLS.
+	// Переменная окружения: GRPC_KEY_FILE
+	// Флаг: -grpc-key
+	GRPCKeyFile string
 }
 
 // loadJSONConfig загружает конфигурацию из JSON файла.
@@ -182,6 +211,10 @@ func NewConfig() *Config {
 	cfg.KeyFile = DefaultKeyFile
 	cfg.ConfigFile = DefaultConfigFile
 	cfg.TrustedSubnet = ""
+	cfg.EnableGRPC = true // gRPC включен по умолчанию
+	cfg.GRPCAddress = DefaultGRPCAddress
+	cfg.GRPCCertFile = DefaultGRPCCertFile
+	cfg.GRPCKeyFile = DefaultGRPCKeyFile
 
 	// Шаг 2: Применяем переменные окружения (включая путь к конфигурационному файлу)
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
@@ -224,6 +257,20 @@ func NewConfig() *Config {
 	if envTrustedSubnet := os.Getenv("TRUSTED_SUBNET"); envTrustedSubnet != "" {
 		cfg.TrustedSubnet = envTrustedSubnet
 	}
+	if envEnableGRPC := os.Getenv("ENABLE_GRPC"); envEnableGRPC == "true" {
+		cfg.EnableGRPC = true
+	} else if envEnableGRPC == "false" {
+		cfg.EnableGRPC = false
+	}
+	if envGRPCAddress := os.Getenv("GRPC_ADDRESS"); envGRPCAddress != "" {
+		cfg.GRPCAddress = envGRPCAddress
+	}
+	if envGRPCCertFile := os.Getenv("GRPC_CERT_FILE"); envGRPCCertFile != "" {
+		cfg.GRPCCertFile = envGRPCCertFile
+	}
+	if envGRPCKeyFile := os.Getenv("GRPC_KEY_FILE"); envGRPCKeyFile != "" {
+		cfg.GRPCKeyFile = envGRPCKeyFile
+	}
 
 	// Шаг 3: Регистрируем флаги командной строки
 	flag.StringVar(&cfg.ServerAddress, "a", cfg.ServerAddress, "адрес запуска HTTP-сервера")
@@ -239,6 +286,10 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.ConfigFile, "c", cfg.ConfigFile, "путь к JSON файлу конфигурации")
 	flag.StringVar(&cfg.ConfigFile, "config", cfg.ConfigFile, "путь к JSON файлу конфигурации")
 	flag.StringVar(&cfg.TrustedSubnet, "t", cfg.TrustedSubnet, "доверенная подсеть CIDR")
+	flag.BoolVar(&cfg.EnableGRPC, "g", cfg.EnableGRPC, "включить gRPC сервер")
+	flag.StringVar(&cfg.GRPCAddress, "grpc-address", cfg.GRPCAddress, "адрес gRPC сервера")
+	flag.StringVar(&cfg.GRPCCertFile, "grpc-cert", cfg.GRPCCertFile, "путь к файлу сертификата для gRPC")
+	flag.StringVar(&cfg.GRPCKeyFile, "grpc-key", cfg.GRPCKeyFile, "путь к файлу приватного ключа для gRPC")
 
 	// Шаг 4: Парсим флаги командной строки
 	flag.Parse()
@@ -285,6 +336,18 @@ func NewConfig() *Config {
 		}
 		if jsonConfig.TrustedSubnet != nil && !isFlagSet("t") && os.Getenv("TRUSTED_SUBNET") == "" {
 			cfg.TrustedSubnet = *jsonConfig.TrustedSubnet
+		}
+		if jsonConfig.EnableGRPC != nil && !isFlagSet("g") && os.Getenv("ENABLE_GRPC") == "" {
+			cfg.EnableGRPC = *jsonConfig.EnableGRPC
+		}
+		if jsonConfig.GRPCAddress != nil && !isFlagSet("grpc-address") && os.Getenv("GRPC_ADDRESS") == "" {
+			cfg.GRPCAddress = *jsonConfig.GRPCAddress
+		}
+		if jsonConfig.GRPCCertFile != nil && !isFlagSet("grpc-cert") && os.Getenv("GRPC_CERT_FILE") == "" {
+			cfg.GRPCCertFile = *jsonConfig.GRPCCertFile
+		}
+		if jsonConfig.GRPCKeyFile != nil && !isFlagSet("grpc-key") && os.Getenv("GRPC_KEY_FILE") == "" {
+			cfg.GRPCKeyFile = *jsonConfig.GRPCKeyFile
 		}
 	}
 
