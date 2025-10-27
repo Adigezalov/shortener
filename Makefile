@@ -1,4 +1,4 @@
-.PHONY: build build-with-version test benchmark profile clean fmt fmt-check lint check doc help deps staticlint staticlint-full
+.PHONY: build build-with-version test benchmark profile clean fmt fmt-check lint check doc help deps staticlint staticlint-full run-with-trusted-subnet run-dev
 
 # Установка зависимостей
 deps:
@@ -79,6 +79,14 @@ lint:
 staticlint:
 	go run ./cmd/staticlint ./cmd/shortener ./internal/auth ./internal/config ./internal/database ./internal/handlers ./internal/logger ./internal/middleware ./internal/models ./internal/profiling ./internal/shortener ./internal/storage
 
+# Запуск приложения с доверенной подсетью для внутренних эндпоинтов
+run-with-trusted-subnet:
+	TRUSTED_SUBNET=192.168.0.0/16 ./shortener
+
+# Запуск приложения для локальной разработки с доверенной подсетью
+run-dev:
+	TRUSTED_SUBNET=127.0.0.1/32 ./shortener
+
 # Полный статический анализ (включая тесты)
 staticlint-full:
 	go run ./cmd/staticlint ./cmd/... ./internal/...
@@ -139,4 +147,6 @@ help:
 	@echo "  check              - Комплексная проверка (форматирование + линтинг + статический анализ + тесты)"
 	@echo "  doc                - Генерация и просмотр документации"
 	@echo "  clean              - Очистить профили и бинарники"
+	@echo "  run-with-trusted-subnet - Запустить приложение с доверенной подсетью (192.168.0.0/16)"
+	@echo "  run-dev            - Запустить для локальной разработки (127.0.0.1)"
 	@echo "  help               - Показать эту справку"
