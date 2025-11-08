@@ -184,6 +184,34 @@ GET /ping
 - **200 OK** - База данных доступна
 - **500 Internal Server Error** - База данных недоступна
 
+### 8. Статистика сервиса (Internal)
+
+Возвращает статистику сервиса: количество URL и пользователей.
+
+**Запрос:**
+```http
+GET /api/internal/stats
+X-Real-IP: 192.168.1.100
+```
+
+**Ответы:**
+
+- **200 OK** - Статистика сервиса
+  ```json
+  {
+    "urls": 150,
+    "users": 25
+  }
+  ```
+
+- **403 Forbidden** - IP-адрес клиента не входит в доверенную подсеть
+- **500 Internal Server Error** - Внутренняя ошибка сервера
+
+**Требования:**
+- Эндпоинт доступен только для IP-адресов из доверенной подсети (настраивается через `trusted_subnet`)
+- IP-адрес клиента передается в заголовке `X-Real-IP`
+- Если `trusted_subnet` не настроен, доступ к эндпоинту запрещен
+
 ## Коды ошибок
 
 | Код | Описание |
@@ -195,6 +223,7 @@ GET /ping
 | 307 | Temporary Redirect - Временное перенаправление |
 | 400 | Bad Request - Некорректный запрос |
 | 401 | Unauthorized - Требуется аутентификация |
+| 403 | Forbidden - Доступ запрещен (IP не в доверенной подсети) |
 | 404 | Not Found - Ресурс не найден |
 | 409 | Conflict - Конфликт (URL уже существует) |
 | 410 | Gone - Ресурс удален |
@@ -249,6 +278,22 @@ curl -c cookies.txt -X POST http://localhost:8080/ \
 curl -b cookies.txt http://localhost:8080/api/user/urls
 ```
 
+### Получение статистики сервиса
+
+```bash
+# Запускаем сервер с доверенной подсетью
+TRUSTED_SUBNET=127.0.0.1/32 ./shortener
+
+# Получаем статистику (IP из доверенной подсети)
+curl -H "X-Real-IP: 127.0.0.1" http://localhost:8080/api/internal/stats
+
+# Ответ: {"urls": 150, "users": 25}
+
+# Попытка доступа с запрещенного IP
+curl -H "X-Real-IP: 192.168.1.1" http://localhost:8080/api/internal/stats
+# Ответ: 403 Forbidden
+```
+
 ## Middleware
 
 Сервис использует следующие middleware:
@@ -258,6 +303,7 @@ curl -b cookies.txt http://localhost:8080/api/user/urls
 - **Compression** - Gzip сжатие ответов
 - **Authentication** - Автоматическая аутентификация пользователей
 - **Request ID** - Генерация уникального ID для каждого запроса
+- **IP Auth** - Проверка IP-адреса для внутренних эндпоинтов
 
 ## Конфигурация
 
@@ -269,6 +315,7 @@ curl -b cookies.txt http://localhost:8080/api/user/urls
 | Базовый URL | `BASE_URL` | `-b` | `http://localhost:8080` | Базовый URL для коротких ссылок |
 | Файл хранения | `FILE_STORAGE_PATH` | `-f` | `storage.json` | Путь к файлу хранения |
 | База данных | `DATABASE_DSN` | `-d` | - | Строка подключения к PostgreSQL |
+| Доверенная подсеть | `TRUSTED_SUBNET` | `-t` | - | CIDR подсети для доступа к внутренним эндпоинтам |
 
 ## Хранение данных
 

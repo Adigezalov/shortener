@@ -191,6 +191,23 @@ func (s *FileStorage) IsDeleted(shortURL string) (bool, error) {
 	return s.deletedURLs[shortURL], nil
 }
 
+// Stats возвращает статистику хранилища
+func (s *FileStorage) Stats() (Stats, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Подсчитываем количество URL (исключая удаленные)
+	urlsCount := 0
+	for range s.urls {
+		urlsCount++
+	}
+
+	// Подсчитываем количество уникальных пользователей
+	usersCount := len(s.userURLs)
+
+	return Stats{URLs: urlsCount, Users: usersCount}, nil
+}
+
 // Close закрывает хранилище и освобождает ресурсы
 func (s *FileStorage) Close() error {
 	close(s.flushQueue)
